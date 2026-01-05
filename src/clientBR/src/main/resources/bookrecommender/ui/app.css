@@ -1,0 +1,356 @@
+/* stylelint-disable css-compat */
+/* =========================
+   BookRecommender — Theme
+   ========================= */
+
+.root {
+  -fx-font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+
+  -fx-primary: #2563eb;
+  -fx-primary-700: #1d4ed8;
+  -fx-primary-50: #eff6ff;
+
+  -fx-success: #16a34a;
+  -fx-warning: #f59e0b;
+  -fx-danger:  #dc2626;
+
+  -fx-bg: #0b1220;
+  -fx-bg2: #0f172a;
+  -fx-surface: #0b1220;
+  -fx-card: rgba(255,255,255,0.06);
+  -fx-card-2: rgba(255,255,255,0.08);
+  -fx-border: rgba(255,255,255,0.10);
+
+  -fx-text: #e5e7eb;
+  -fx-muted: rgba(229,231,235,0.70);
+
+  -fx-focus: rgba(37,99,235,0.35);
+}
+
+.app-bg {
+  -fx-background-color:
+    radial-gradient(focus-distance 0%, center 30% 0%, radius 70%, rgba(37,99,235,0.22), transparent),
+    radial-gradient(focus-distance 0%, center 70% 30%, radius 70%, rgba(220,38,38,0.12), transparent),
+    linear-gradient(to bottom, -fx-bg2, -fx-bg);
+}
+
+/* ---- App Bar ---- */
+.appbar {
+  -fx-background-color: rgba(255,255,255,0.04);
+  -fx-border-color: transparent transparent -fx-border transparent;
+  -fx-border-width: 0 0 1 0;
+  -fx-padding: 14 18 14 18;
+}
+
+.title {
+  -fx-font-size: 22px;
+  -fx-font-weight: 800;
+  -fx-text-fill: -fx-text;
+}
+.subtitle {
+  -fx-font-size: 12px;
+  -fx-text-fill: -fx-muted;
+}
+
+.badge {
+  -fx-background-color: rgba(255,255,255,0.08);
+  -fx-background-radius: 999;
+  -fx-padding: 6 10 6 10;
+  -fx-text-fill: -fx-text;
+  -fx-font-size: 12px;
+}
+
+/* ---- Cards ---- */
+.card {
+  -fx-background-color: -fx-card;
+  -fx-background-radius: 18;
+  -fx-border-radius: 18;
+  -fx-border-color: -fx-border;
+  -fx-padding: 14;
+}
+.card2 {
+  -fx-background-color: -fx-card-2;
+  -fx-background-radius: 18;
+  -fx-border-radius: 18;
+  -fx-border-color: -fx-border;
+  -fx-padding: 14;
+}
+.card-title {
+  -fx-font-size: 14px;
+  -fx-font-weight: 800;
+  -fx-text-fill: -fx-text;
+}
+.muted { -fx-text-fill: -fx-muted; }
+
+/* ---- Buttons ---- */
+.button {
+  -fx-background-radius: 12;
+  -fx-border-radius: 12;
+  -fx-padding: 10 14 10 14;
+
+  -fx-background-color: rgba(255,255,255,0.06);
+  -fx-border-color: rgba(255,255,255,0.10);
+  -fx-text-fill: -fx-text;
+  -fx-cursor: hand;
+}
+.button:hover { -fx-background-color: rgba(255,255,255,0.10); }
+.button:pressed { -fx-background-color: rgba(255,255,255,0.08); }
+
+.button.primary {
+  -fx-background-color: -fx-primary;
+  -fx-border-color: transparent;
+  -fx-text-fill: white;
+  -fx-font-weight: 700;
+}
+.button.primary:hover { -fx-background-color: -fx-primary-700; }
+
+.button.ghost {
+  -fx-background-color: transparent;
+  -fx-border-color: transparent;
+  -fx-text-fill: -fx-text;
+}
+.button.ghost:hover { -fx-background-color: rgba(255,255,255,0.06); }
+
+.button.danger {
+  -fx-background-color: rgba(220,38,38,0.16);
+  -fx-border-color: rgba(220,38,38,0.45);
+  -fx-text-fill: #fecaca;
+  -fx-font-weight: 700;
+}
+.button.danger:hover { -fx-background-color: rgba(220,38,38,0.22); }
+
+/* Small icon button (eye) */
+.button.icon {
+  -fx-padding: 8 10 8 10;
+  -fx-background-radius: 12;
+  -fx-border-radius: 12;
+}
+
+/* ---- Inputs ---- */
+.text-field, .password-field, .text-area, .combo-box-base, .spinner {
+  -fx-background-radius: 12;
+  -fx-border-radius: 12;
+  -fx-background-color: rgba(255,255,255,0.06);
+  -fx-border-color: rgba(255,255,255,0.10);
+  -fx-text-fill: -fx-text;
+  -fx-prompt-text-fill: rgba(229,231,235,0.45);
+}
+.text-field, .password-field, .combo-box-base { -fx-padding: 10 12 10 12; }
+.text-area { -fx-padding: 10 12 10 12; }
+.text-area .content { -fx-background-color: transparent; }
+
+.text-field:focused, .password-field:focused, .text-area:focused, .combo-box-base:focused, .spinner:focused {
+  -fx-border-color: -fx-primary;
+  -fx-effect: dropshadow(gaussian, -fx-focus, 14, 0.25, 0, 0);
+}
+
+/* ---- TableView ---- */
+.table-view {
+  -fx-background-color: transparent;
+  -fx-border-color: rgba(255,255,255,0.10);
+  -fx-border-radius: 14;
+  -fx-background-radius: 14;
+}
+.table-view .column-header-background {
+  -fx-background-color: rgba(255,255,255,0.08);
+  -fx-background-radius: 14 14 0 0;
+}
+.table-view .column-header, .table-view .filler { -fx-size: 40px; -fx-background-color: transparent; }
+.table-view .column-header .label { -fx-text-fill: -fx-text; -fx-font-weight: 800; }
+.table-row-cell { -fx-background-color: transparent; -fx-text-fill: -fx-text; }
+.table-row-cell:odd { -fx-background-color: rgba(255,255,255,0.03); }
+.table-row-cell:selected { -fx-background-color: rgba(37,99,235,0.22); }
+.table-cell { -fx-border-color: transparent; -fx-text-fill: -fx-text; }
+
+/* ---- Separator ---- */
+.separator *.line { -fx-border-color: rgba(255,255,255,0.10); }
+
+/* ---- Dialogs ---- */
+.dialog-pane {
+  -fx-background-color: rgba(15,23,42,0.98);
+  -fx-border-color: rgba(255,255,255,0.10);
+  -fx-border-radius: 18;
+  -fx-background-radius: 18;
+}
+.dialog-pane .label { -fx-text-fill: -fx-text; }
+.dialog-pane .header-panel { -fx-background-color: transparent; }
+
+/* ---- Statusbar ---- */
+.statusbar {
+  -fx-background-color: rgba(255,255,255,0.04);
+  -fx-border-color: -fx-border;
+  -fx-border-width: 1 0 0 0;
+  -fx-padding: 10 14 10 14;
+}
+
+/* ---- Chips ---- */
+.chip {
+  -fx-background-color: rgba(255,255,255,0.08);
+  -fx-background-radius: 999;
+  -fx-padding: 6 10 6 10;
+  -fx-text-fill: -fx-text;
+}
+
+/* ---- Snackbar ---- */
+.snackbar {
+  -fx-background-color: rgba(15,23,42,0.92);
+  -fx-text-fill: -fx-text;
+  -fx-padding: 10 16 10 16;
+  -fx-background-radius: 999;
+  -fx-font-size: 13px;
+  -fx-border-color: rgba(255,255,255,0.10);
+  -fx-border-radius: 999;
+}
+
+/* ---- ScrollPane clean (no white viewport) ---- */
+.scroll-pane {
+  -fx-background-color: transparent;
+  -fx-background: transparent;
+  -fx-padding: 0;
+}
+
+.scroll-pane > .viewport {
+  -fx-background-color: transparent;
+}
+
+.scroll-pane .corner {
+  -fx-background-color: transparent;
+}
+
+/* Variante dedicata */
+.scroll-clean {
+  -fx-background-color: transparent;
+  -fx-background: transparent;
+}
+
+.scroll-clean > .viewport {
+  -fx-background-color: transparent;
+}
+
+/* Scrollbar un po' più "pro" */
+.scroll-bar:vertical, .scroll-bar:horizontal {
+  -fx-background-color: transparent;
+}
+.scroll-bar .track {
+  -fx-background-color: rgba(255,255,255,0.06);
+  -fx-background-radius: 999;
+}
+.scroll-bar .thumb {
+  -fx-background-color: rgba(255,255,255,0.18);
+  -fx-background-radius: 999;
+}
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+  -fx-background-color: transparent;
+  -fx-padding: 0;
+}
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+  -fx-background-color: transparent;
+}
+
+/* ---- Checkbox leggibile su tema scuro ---- */
+.check-box {
+  -fx-text-fill: -fx-text;
+}
+.check-box .text {
+  -fx-fill: -fx-text;
+}
+.check-box .box {
+  -fx-background-color: rgba(255,255,255,0.06);
+  -fx-border-color: rgba(255,255,255,0.14);
+  -fx-border-radius: 6;
+  -fx-background-radius: 6;
+}
+.check-box:selected .mark {
+  -fx-background-color: white;
+}
+
+/* ---- Stelle recensioni ---- */
+.star {
+  -fx-text-fill: -fx-text;
+  -fx-font-size: 14px;
+  -fx-font-weight: 800;
+}
+.star.off {
+  -fx-opacity: 0.35;
+}
+.star-label {
+  -fx-text-fill: -fx-muted;
+}
+
+/* ---- ComboBox: testo leggibile su tema scuro ---- */
+.combo-box,
+.combo-box-base,
+.combo-box .list-cell,
+.combo-box .text-field {
+  -fx-text-fill: -fx-text;
+}
+
+.combo-box .text-field {
+  -fx-prompt-text-fill: rgba(255,255,255,0.45);
+  -fx-background-color: transparent; /* evita overlay chiari */
+}
+
+.combo-box .list-cell {
+  -fx-background-color: transparent;
+  -fx-text-fill: -fx-text;
+}
+
+/* Dropdown list */
+.combo-box-popup .list-view {
+  -fx-background-color: rgba(20,24,35,0.98);
+  -fx-background-radius: 12;
+  -fx-padding: 6;
+}
+
+.combo-box-popup .list-cell {
+  -fx-text-fill: -fx-text;
+  -fx-padding: 10 12 10 12;
+  -fx-background-color: transparent;
+  -fx-background-radius: 10;
+}
+
+.combo-box-popup .list-cell:hover {
+  -fx-background-color: rgba(255,255,255,0.06);
+}
+
+.combo-box-popup .list-cell:selected {
+  -fx-background-color: rgba(59,130,246,0.35); /* blu soft */
+}
+
+/* --- STOP layout jump: stessi spessori bordo sempre --- */
+.text-field,
+.password-field,
+.text-area,
+.combo-box-base,
+.spinner,
+.spinner .text-field {
+  -fx-border-width: 2;                 /* fisso */
+  -fx-background-insets: 0;
+  -fx-border-insets: 0;
+  -fx-padding: 10 12 10 12;
+}
+
+/* Cambia SOLO colore, non lo spessore */
+.text-field:focused,
+.password-field:focused,
+.text-area:focused,
+.combo-box-base:focused,
+.spinner:focused,
+.spinner .text-field:focused {
+  -fx-border-width: 2;                 /* uguale identico */
+  -fx-border-color: rgba(59,130,246,0.95);
+}
+
+/* Stato normale: bordo più “soft” ma stesso spessore */
+.text-field,
+.password-field,
+.text-area,
+.combo-box-base,
+.spinner,
+.spinner .text-field {
+  -fx-border-color: rgba(255,255,255,0.10);
+}
+
+

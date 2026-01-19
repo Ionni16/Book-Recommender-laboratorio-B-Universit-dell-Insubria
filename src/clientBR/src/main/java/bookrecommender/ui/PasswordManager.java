@@ -24,6 +24,7 @@ import javafx.scene.layout.StackPane;
  * che il layout riservi spazio al controllo non attivo.
  *
  * @author Matteo Ferrario
+ * @version 1.0
  */
 public class PasswordManager {
     public final PasswordField pf = new PasswordField();

@@ -7,6 +7,7 @@ import bookrecommender.net.RequestType;
 import bookrecommender.net.Response;
 import bookrecommender.repo.LibriRepository;
 import bookrecommender.service.*;
+
 import javafx.application.Application;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
@@ -22,36 +23,32 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
+
 import java.net.URL;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-
-
-
 /**
  * Classe principale dell'interfaccia grafica JavaFX dell'applicazione
  * <code>Book Recommender</code>.
- *
+ * <p>
  * Requisiti chiave (Lab B):
  * - Architettura Client/Server con DB PostgreSQL e JDBC lato server
  * - Tabelle DB: Libri, UtentiRegistrati, Librerie, ValutazioniLibri, ConsigliLibri
  * - Ricerche: titolo, autore, autore+anno (case-insensitive, substring)
  * - Valutazioni e consigli solo per libri presenti nelle librerie dell'utente
  *
- * @author Ionut Pui
- * @version 1.0
+ * @author Ionut Puiu
+ * @version 3.0
  */
 public class BookRecommenderFX extends Application {
-    // === Config rete (client -> serverBR) ===
     private static final String SERVER_HOST = "127.0.0.1";
     private static final int SERVER_PORT = 5050;
-
-    // ---- Services (tutti remoti via socket/proxy) ----
-    private LibriRepository libriRepo;              // usato SOLO come cache locale (non file)
+    private static final Path IGNORED_PATH = Path.of(".");
+    private LibriRepository libriRepo;
     private SearchService searchService;
     private AuthService authService;
     private LibraryService libraryService;
@@ -59,10 +56,10 @@ public class BookRecommenderFX extends Application {
     private SuggestionService suggestionService;
     private AggregationService aggregationService;
 
-    // Proxy diretto solo per la chiamata SEARCH_BY_AUTHOR_YEAR con limit (il server lo richiede)
+    // Proxy diretto solo per la chiamata SEARCH_BY_AUTHOR_YEAR con limit
     private BRProxy proxy;
 
-    // Cache locale libri visti (per risolvere suggerimenti/dettagli senza repository su file)
+    // Cache locale libri visti
     private final Map<Integer, Book> bookCache = new HashMap<>();
 
     // ---- AppBar buttons ----
@@ -96,13 +93,21 @@ public class BookRecommenderFX extends Application {
 
     private Book selectedBook; // libro selezionato per azioni rapide
 
+    /**
+     * Modalità di ricerca disponibili nell'interfaccia.
+     * <ul>
+     *   <li><code>TITLE</code>: ricerca per titolo</li>
+     *   <li><code>AUTHOR</code>: ricerca per autore</li>
+     *   <li><code>AUTHOR_YEAR</code>: ricerca per autore e anno (richiesta dalle specifiche)</li>
+     * </ul>
+     */
     private enum SearchMode {
         TITLE("Titolo"),
         AUTHOR("Autore"),
-        AUTHOR_YEAR("Autore + Anno"); // richiesto dalle specifiche
+        AUTHOR_YEAR("Autore + Anno");
 
         private final String label;
-        SearchMode(String l) { this.label = l; }
+        SearchMode(String l) {this.label = l;}
         @Override public String toString() { return label; }
     }
 
@@ -112,20 +117,35 @@ public class BookRecommenderFX extends Application {
     private static final Pattern EMAIL_RX = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final Pattern CF_RX = Pattern.compile("^[A-Za-z0-9]{16}$");
 
+
+    /**
+     * Entry point JavaFX: inizializza proxy/servizi, costruisce la UI e carica risultati iniziali.
+     * <p>
+     * In particolare:
+     * </p>
+     * <ul>
+     *   <li>crea {@link BRProxy} e I service (auth, search, library, review, suggestion, aggregation)</li>
+     *   <li>Costruisce scene e layout principali</li>
+     *   <li>Aggancia scorciatoia <code>F5</code> per {@link #refresh(Stage)}</li>
+     *   <li>Carica risultati iniziali con {@link #loadInitialResults()}</li>
+     * </ul>
+     *
+     * @param stage stage principale dell'applicazione
+     */
     @Override
     public void start(Stage stage) {
         // === Init rete/servizi ===
         proxy = new BRProxy(SERVER_HOST, SERVER_PORT);
 
-        // Repo client NON legge file: è solo cache (implementazione stub nel tuo progetto)
-        libriRepo = new LibriRepository(Paths.get(".")); // Path ignorato
+        // Repo client NON legge file
+        libriRepo = new LibriRepository(IGNORED_PATH); // Path ignorato
 
-        searchService      = new SearchService(libriRepo);
-        authService        = new AuthService(SERVER_HOST, SERVER_PORT);
-        libraryService     = new LibraryService(Paths.get(".")); // Path ignorato
-        reviewService = new ReviewService(Paths.get("."), Paths.get("."));
-        suggestionService  = new SuggestionService(Paths.get("."), Paths.get(".")); // Path ignorati
-        aggregationService = new AggregationService(Paths.get("."), Paths.get(".")); // Path ignorati
+        searchService = new SearchService(libriRepo);
+        authService = new AuthService(SERVER_HOST, SERVER_PORT);
+        libraryService = new LibraryService(IGNORED_PATH); // Path ignorato
+        reviewService = new ReviewService(IGNORED_PATH, IGNORED_PATH);
+        suggestionService = new SuggestionService(IGNORED_PATH, IGNORED_PATH); // Path ignorati
+        aggregationService = new AggregationService(IGNORED_PATH, IGNORED_PATH); // Path ignorati
 
         StackPane stack = new StackPane();
         BorderPane app = new BorderPane();
@@ -150,7 +170,6 @@ public class BookRecommenderFX extends Application {
 
 
 
-        // Shortcut: ENTER = cerca (coerente con hint), F5 = refresh tabella (senza dataset locale)
         scene.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.F5) {
                 e.consume();
@@ -162,7 +181,7 @@ public class BookRecommenderFX extends Application {
         stage.setTitle("Book Recommender");
         stage.setScene(scene);
         stage.show();
-        loadInitialResults(stage);
+        loadInitialResults();
 
 
         refreshUserUi();
@@ -171,7 +190,24 @@ public class BookRecommenderFX extends Application {
     }
 
     // ---------------- AppBar ----------------
-
+    /**
+     * Costruisce la barra superiore (AppBar) con titolo, badge utente e azioni principali.
+     * <p>
+     * Include i pulsanti:
+     * </p>
+     * <ul>
+     *   <li>Login / registrazione (visibili solo se non autenticato)</li>
+     *   <li>Logout (visibile solo se autenticato)</li>
+     *   <li>Accesso all'area riservata</li>
+     * </ul>
+     *
+     * @param owner stage proprietario per l'apertura dei dialog
+     * @return nodo JavaFX contenente la barra superiore
+     * @see #openLogin(Stage)
+     * @see #openRegister(Stage)
+     * @see #openReservedHome(Stage)
+     * @see #refreshUserUi()
+     */
     private Node buildAppBar(Stage owner) {
         Label title = new Label("Book Recommender");
         title.getStyleClass().add("title");
@@ -201,7 +237,7 @@ public class BookRecommenderFX extends Application {
         Button btnArea = new Button("Area riservata");
         btnArea.setOnAction(e -> {
             openReservedHome(owner);
-            refreshUserUi(); // importantissimo: aggiorna badge/bottoni dopo chiusura finestre
+            refreshUserUi(); // Aggiorna badge/bottoni dopo chiusura finestre
         });
 
 
@@ -218,17 +254,31 @@ public class BookRecommenderFX extends Application {
         return bar;
     }
 
-    
 
+    /**
+     * Aggiorna lo stato della UI in base all'autenticazione corrente.
+     * <p>
+     * Effetti principali:
+     * </p>
+     * <ul>
+     *   <li>Aggiorna il badge utente (<code>lblUserBadge</code>)</li>
+     *   <li>Mostra/nasconde i pulsanti login/registrazione/logout</li>
+     *   <li>Abilita/disabilita opzioni che richiedono login (es. <code>ckOnlyMyLibraries</code>)</li>
+     *   <li>Abilita/disabilita azioni rapide su libro selezionato (valuta/consiglia)</li>
+     * </ul>
+     */
     private void refreshUserUi() {
         String u = authService.getCurrentUserid();
         boolean logged = (u != null);
 
         lblUserBadge.setText(logged ? ("Loggato: " + u) : "Ospite");
 
-        btnLogin.setVisible(!logged);    btnLogin.setManaged(!logged);
-        btnRegister.setVisible(!logged); btnRegister.setManaged(!logged);
-        btnLogout.setVisible(logged);    btnLogout.setManaged(logged);
+        btnLogin.setVisible(!logged);
+        btnLogin.setManaged(!logged);
+        btnRegister.setVisible(!logged);
+        btnRegister.setManaged(!logged);
+        btnLogout.setVisible(logged);
+        btnLogout.setManaged(logged);
 
         if (ckOnlyMyLibraries != null) {
             ckOnlyMyLibraries.setDisable(!logged);
@@ -244,14 +294,27 @@ public class BookRecommenderFX extends Application {
     }
 
     // ---------------- Main layout ----------------
-
+    /**
+     * Costruisce il layout principale a tre colonne:
+     * <ul>
+     *   <li>Sinistra: pannello ricerca (scrollable)</li>
+     *   <li>Centro: tabella risultati</li>
+     *   <li>Destra: pannello dettaglio (scrollable)</li>
+     * </ul>
+     *
+     * @param owner stage proprietario
+     * @return nodo principale da inserire al centro del {@link BorderPane}
+     * @see #buildSearchCard(Stage)
+     * @see #buildTableCard(Stage)
+     * @see #buildDetailCard(Stage)
+     */
     private Node buildMain(Stage owner) {
         VBox searchCard = buildSearchCard(owner);
-        VBox tableCard  = buildTableCard(owner);
+        VBox tableCard = buildTableCard(owner);
         VBox detailCard = buildDetailCard(owner);
 
-        // Scroll SOLO per sinistra/destra (così non si taglia mai in basso)
-        ScrollPane left  = wrapScroll(searchCard);
+        // Scroll per sinistra/destra
+        ScrollPane left = wrapScroll(searchCard);
         ScrollPane right = wrapScroll(detailCard);
 
         HBox main = new HBox(14, left, tableCard, right);
@@ -271,7 +334,7 @@ public class BookRecommenderFX extends Application {
         right.setPrefWidth(420);
         right.setMaxWidth(460);
 
-        // grow: SOLO centro cresce
+        // grow centro
         HBox.setHgrow(left, Priority.NEVER);
         HBox.setHgrow(right, Priority.NEVER);
         HBox.setHgrow(tableCard, Priority.ALWAYS);
@@ -280,6 +343,23 @@ public class BookRecommenderFX extends Application {
     }
 
 
+    /**
+     * Costruisce la "card" di ricerca (selezione modalità e filtri).
+     * <p>
+     * Contiene:
+     * </p>
+     * <ul>
+     *   <li>Selettore modalità ({@link #cbSearchMode})</li>
+     *   <li>Campi titolo/autore/anno in base alla modalità</li>
+     *   <li>Limite risultati</li>
+     *   <li>Opzione ricerca nelle sole librerie dell'utente (richiede login)</li>
+     * </ul>
+     *
+     * @param owner stage proprietario
+     * @return card JavaFX con controlli di ricerca
+     * @see #applySearchMode(SearchMode)
+     * @see #doSearch(Stage)
+     */
     private VBox buildSearchCard(Stage owner) {
         Label t = new Label("Cerca un libro");
         t.getStyleClass().add("card-title");
@@ -353,6 +433,21 @@ public class BookRecommenderFX extends Application {
         return box;
     }
 
+
+    /**
+     * Applica la modalità di ricerca selezionata, mostrando/nascondendo i controlli necessari.
+     * <p>
+     * Regole:
+     * </p>
+     * <ul>
+     *   <li>{@link SearchMode#TITLE}: mostra solo campo titolo</li>
+     *   <li>{@link SearchMode#AUTHOR}: mostra solo campo autore</li>
+     *   <li>{@link SearchMode#AUTHOR_YEAR}: mostra campo autore + anno</li>
+     * </ul>
+     *
+     * @param mode modalità di ricerca selezionata
+     * @see #setVisibleManaged(Control, boolean)
+     */
     private void applySearchMode(SearchMode mode) {
         setVisibleManaged(tfTitle, false);
         setVisibleManaged(tfAuthor, false);
@@ -368,15 +463,48 @@ public class BookRecommenderFX extends Application {
         }
     }
 
-    
 
+    /**
+     * Imposta visibilità e "managed" su un controllo.
+     * <p>
+     * In JavaFX, <code>managed=false</code> fa sì che il nodo non occupi spazio nel layout.
+     * </p>
+     *
+     * @param c controllo da aggiornare
+     * @param on <code>true</code> per renderlo visibile e gestito dal layout, <code>false</code> per nasconderlo
+     */
     private static void setVisibleManaged(Control c, boolean on) {
         c.setVisible(on);
         c.setManaged(on);
     }
 
     // ---------------- TABLE ----------------
-
+    /**
+     * Costruisce la card centrale contenente la tabella dei risultati di ricerca.
+     * <p>
+     * La tabella visualizza:
+     * </p>
+     * <ul>
+     *   <li>ID libro</li>
+     *   <li>titolo</li>
+     *   <li>autori</li>
+     *   <li>Anno di pubblicazione</li>
+     * </ul>
+     *
+     * <p>
+     * Comportamento:
+     * </p>
+     * <ul>
+     *   <li>Selezione singola → aggiorna il pannello dettaglio</li>
+     *   <li>Doppio click su una riga → apre il dettaglio del libro</li>
+     *   <li>pulsante di refresh manuale (equivalente a F5)</li>
+     * </ul>
+     *
+     * @param owner stage proprietario
+     * @return card JavaFX con la tabella dei risultati
+     * @see #showDetail(Stage, Book)
+     * @see #refresh(Stage)
+     */
     private VBox buildTableCard(Stage owner) {
         Label t = new Label("Risultati");
         t.getStyleClass().add("card-title");
@@ -403,10 +531,14 @@ public class BookRecommenderFX extends Application {
         cYear.setCellValueFactory(v -> new ReadOnlyObjectWrapper<>(v.getValue().getAnno()));
         cYear.setPrefWidth(90);
 
-        cId.setMinWidth(70);      cId.setMaxWidth(90);
-        cTitle.setMinWidth(320);  cTitle.setMaxWidth(900);
-        cAuthor.setMinWidth(260); cAuthor.setMaxWidth(800);
-        cYear.setMinWidth(80);    cYear.setMaxWidth(120);
+        cId.setMinWidth(70);
+        cId.setMaxWidth(90);
+        cTitle.setMinWidth(320);
+        cTitle.setMaxWidth(900);
+        cAuthor.setMinWidth(260);
+        cAuthor.setMaxWidth(800);
+        cYear.setMinWidth(80);
+        cYear.setMaxWidth(120);
 
         cYear.setStyle("-fx-alignment: CENTER;");
         cYear.setCellFactory(ignored -> new TableCell<>() {
@@ -445,7 +577,28 @@ public class BookRecommenderFX extends Application {
     }
 
     // ---------------- DETAIL ----------------
-
+    /**
+     * Costruisce la card di dettaglio del libro selezionato.
+     * <p>
+     * Mostra:
+     * </p>
+     * <ul>
+     *   <li>Titolo, autori e metadati (id/anno/categoria/editore)</li>
+     *   <li>Aggregazioni recensioni (medie e "stelle") tramite {@link AggregationService}</li>
+     *   <li>Aggregazioni consigli tramite {@link AggregationService} con pulsanti rapidi</li>
+     *   <li>Azioni: aggiungi a libreria, valuta, consiglia, apri liste personali</li>
+     * </ul>
+     *
+     * <p>
+     * Le azioni che richiedono autenticazione vengono abilitate/disabilitate da {@link #refreshUserUi()}.
+     * </p>
+     *
+     * @param owner stage proprietario
+     * @return card JavaFX del dettaglio libro
+     * @see #showDetail(Stage, Book)
+     * @see #clearDetail()
+     * @see #refreshUserUi()
+     */
     private VBox buildDetailCard(Stage owner) {
         Label t = new Label("Dettaglio libro");
         t.getStyleClass().add("card-title");
@@ -550,6 +703,15 @@ public class BookRecommenderFX extends Application {
         return box;
     }
 
+
+    /**
+     * Crea una riga grafica con etichetta + stelle (1..5) + valore numerico formattato.
+     *
+     * @param label nome dell'aspetto (es. "Stile")
+     * @param value0to5 valore medio atteso in range 0..5 (valori fuori range vengono clampati per la UI)
+     * @return riga JavaFX contenente testo, stelle e valore formattato
+     * @see #DF1
+     */
     private static HBox starsRow(String label, double value0to5) {
         int full = (int) Math.round(value0to5);
         full = Math.max(0, Math.min(5, full));
@@ -574,6 +736,19 @@ public class BookRecommenderFX extends Application {
         return row;
     }
 
+
+    /**
+     * Costruisce la barra di stato inferiore dell'applicazione.
+     * <p>
+     * Visualizza:
+     * </p>
+     * <ul>
+     *   <li>Messaggi di stato e feedback operazioni</li>
+     *   <li>Scorciatoie da tastiera disponibili</li>
+     * </ul>
+     *
+     * @return nodo JavaFX contenente la status bar
+     */
     private Node buildStatusBar() {
         lblStatus = new Label("Pronto");
         lblStatus.getStyleClass().add("muted");
@@ -588,7 +763,24 @@ public class BookRecommenderFX extends Application {
     }
 
     // ---------------- Search logic ----------------
-
+    /**
+     * Esegue una ricerca in base alla modalità selezionata e aggiorna la UI.
+     * <p>
+     * Flusso principale:
+     * </p>
+     * <ol>
+     *   <li>Valida Input in base alla {@link SearchMode}</li>
+     *   <li>Invoca il {@link SearchService} o una richiesta diretta al server</li>
+     *   <li>Applica eventuali filtri (solo librerie dell'utente)</li>
+     *   <li>Applica il limite risultati lato client</li>
+     *   <li>Aggiorna tabella, cache locale e pannello dettaglio</li>
+     * </ol>
+     *
+     * @param owner stage proprietario
+     * @see SearchMode
+     * @see SearchService
+     * @see LibraryService
+     */
     private void doSearch(Stage owner) {
         SearchMode mode = cbSearchMode.getValue();
         int limit = spLimit.getValue();
@@ -611,7 +803,6 @@ public class BookRecommenderFX extends Application {
                 if (author.length() < 2) throw new IllegalArgumentException("Inserisci almeno 2 caratteri nell'autore.");
                 int year = spYear.getValue();
 
-                // FIX: il tuo server attuale si aspetta {autore, anno, limit}
                 Request req = new Request(RequestType.SEARCH_BY_AUTHOR_YEAR, new Object[]{author, year, limit}, null);
                 Response r = proxy.call(req);
                 if (!r.ok) throw new RuntimeException(r.error);
@@ -648,6 +839,17 @@ public class BookRecommenderFX extends Application {
         }
     }
 
+
+    /**
+     * Esegue un refresh "soft" dell'applicazione.
+     * <p>
+     * Non ricarica dati locali, ma verifica la raggiungibilità del server
+     * tramite una richiesta di ping e aggiorna la status bar.
+     * </p>
+     *
+     * @param owner stage proprietario
+     * @see Request#ping()
+     */
     private void refresh(Stage owner) {
         // Non esiste più refresh dataset locale: qui facciamo un ping “soft”
         Response res = proxy.call(Request.ping());
@@ -661,7 +863,35 @@ public class BookRecommenderFX extends Application {
     }
 
     // ---------------- Detail ----------------
-
+    /**
+     * Aggiorna il pannello dettaglio in base al libro selezionato.
+     * <p>
+     * Operazioni principali:
+     * </p>
+     * <ul>
+     *   <li>Aggiorna riferimento al libro selezionato e la UI correlata</li>
+     *   <li>Aggiorna la cache locale <code>bookCache</code></li>
+     *   <li>Popola i campi testuali (titolo/autori/metadati)</li>
+     *   <li>Richiede al server le statistiche recensioni e consigli tramite {@link AggregationService}</li>
+     *   <li>Costruisce i componenti grafici per stelle e lista consigli</li>
+     * </ul>
+     *
+     * <p>
+     * I consigli vengono mostrati come pulsanti; il click tenta:
+     * </p>
+     * <ol>
+     *   <li>Selezione del libro se presente nella tabella corrente</li>
+     *   <li>Fallback su cache locale</li>
+     *   <li>Altrimenti mostra un messaggio informativo</li>
+     * </ol>
+     *
+     * @param owner stage proprietario
+     * @param b libro da visualizzare
+     * @see AggregationService#getReviewStats(int)
+     * @see AggregationService#getSuggestionsStats(int)
+     * @see #bookCache
+     * @see #data
+     */
     private void showDetail(Stage owner, Book b) {
         if (b == null) return;
 
@@ -717,7 +947,7 @@ public class BookRecommenderFX extends Application {
                     Integer id = entry.getKey();
                     int count = entry.getValue();
 
-                    Book sb = bookCache.get(id); // proviamo cache (no file!)
+                    Book sb = bookCache.get(id);
                     String label = (sb == null || sb.getTitolo() == null || sb.getTitolo().isBlank())
                             ? ("Libro ID " + id + "  (" + count + ")")
                             : (sb.getTitolo() + "  (" + count + ")");
@@ -751,6 +981,17 @@ public class BookRecommenderFX extends Application {
         }
     }
 
+
+    /**
+     * Resetta il pannello dettaglio a uno stato "vuoto" (nessun libro selezionato).
+     * <p>
+     * Imposta i campi testuali a "-" e ripristina i messaggi placeholder
+     * per recensioni e consigli. Aggiorna anche lo stato dei pulsanti tramite
+     * {@link #refreshUserUi()}.
+     * </p>
+     *
+     * @see #refreshUserUi()
+     */
     private void clearDetail() {
         selectedBook = null;
         refreshUserUi();
@@ -766,7 +1007,27 @@ public class BookRecommenderFX extends Application {
     }
 
     // ---------------- Librerie ----------------
-
+    /**
+     * Apre un dialog che permette di aggiungere un libro a una libreria dell'utente.
+     * <p>
+     * Funzionalità:
+     * </p>
+     * <ul>
+     *   <li>Carica le librerie dell'utente tramite {@link LibraryService}</li>
+     *   <li>Seleziona una libreria esistente e aggiunge l'ID del libro</li>
+     *   <li>Consente anche la creazione di una nuova libreria (nome minimo 5 caratteri)</li>
+     * </ul>
+     *
+     * <p>
+     * Il metodo richiede che l'utente sia autenticato (tramite {@link #ensureLoggedIn(Stage)}).
+     * </p>
+     *
+     * @param owner stage proprietario
+     * @param book libro da aggiungere
+     * @see LibraryService#listUserLibraries(String)
+     * @see LibraryService#saveLibrary(Library)
+     * @see #ensureLoggedIn(Stage)
+     */
     private void openAddToLibraryDialog(Stage owner, Book book) {
         String user = ensureLoggedIn(owner);
         if (user == null || book == null) return;
@@ -879,6 +1140,15 @@ public class BookRecommenderFX extends Application {
         d.showAndWait();
     }
 
+
+    /**
+     * Crea una {@link ComboBox} configurata per visualizzare oggetti {@link Library}.
+     * <p>
+     * La cella mostra nome libreria e numero di libri, mentre la button-cell mostra solo il nome.
+     * </p>
+     *
+     * @return combo box pronta per essere popolata con librerie
+     */
     private static ComboBox<Library> getLibraryComboBox() {
         ComboBox<Library> cb = new ComboBox<>();
         cb.setMaxWidth(Double.MAX_VALUE);
@@ -901,7 +1171,26 @@ public class BookRecommenderFX extends Application {
     }
 
     // ---------------- Quick actions: Review / Suggestion ----------------
-
+    /**
+     * Apre un dialog per inserire o modificare la recensione dell'utente per un libro.
+     * <p>
+     * Comportamento:
+     * </p>
+     * <ul>
+     *   <li>Richiede login (tramite {@link #ensureLoggedIn(Stage)})</li>
+     *   <li>Se esiste già una recensione dell'utente per il libro, apre in modalità modifica</li>
+     *   <li>Calcola il voto finale come media (arrotondata) dei 5 aspetti</li>
+     *   <li>Salva tramite {@link ReviewService#inserisciValutazione(Review)} o {@link ReviewService#updateReview(Review)}</li>
+     *   <li>Aggiorna il pannello dettaglio dopo il salvataggio</li>
+     * </ul>
+     *
+     * @param owner stage proprietario
+     * @param book libro da valutare
+     * @see ReviewService#listByUser(String)
+     * @see ReviewService#inserisciValutazione(Review)
+     * @see ReviewService#updateReview(Review)
+     * @see #showDetail(Stage, Book)
+     */
     private void openReviewEditor(Stage owner, Book book) {
         String user = ensureLoggedIn(owner);
         if (user == null || book == null) return;
@@ -956,11 +1245,11 @@ public class BookRecommenderFX extends Application {
         grid.setVgap(10);
 
         int r = 0;
-        grid.add(label("Stile (1-5)"), 0, r); grid.add(sStile, 1, r++);
-        grid.add(label("Contenuto (1-5)"), 0, r); grid.add(sCont, 1, r++);
-        grid.add(label("Gradevolezza (1-5)"), 0, r); grid.add(sGrad, 1, r++);
-        grid.add(label("Originalità (1-5)"), 0, r); grid.add(sOrig, 1, r++);
-        grid.add(label("Edizione (1-5)"), 0, r); grid.add(sEdiz, 1, r++);
+        grid.add(label("Stile (1-5)"), 0, r); grid.add(sStile, 1, r);
+        grid.add(label("Contenuto (1-5)"), 0, r); grid.add(sCont, 1, r);
+        grid.add(label("Gradevolezza (1-5)"), 0, r); grid.add(sGrad, 1, r);
+        grid.add(label("Originalità (1-5)"), 0, r); grid.add(sOrig, 1, r);
+        grid.add(label("Edizione (1-5)"), 0, r); grid.add(sEdiz, 1, r);
 
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setMinWidth(170);
@@ -1016,6 +1305,34 @@ public class BookRecommenderFX extends Application {
         d.showAndWait();
     }
 
+
+    /**
+     * Apre un dialog per inserire un suggerimento (fino a 3 libri) relativo a un libro base.
+     * <p>
+     * Regole applicate:
+     * </p>
+     * <ul>
+     *   <li>Richiede login (tramite {@link #ensureLoggedIn(Stage)})</li>
+     *   <li>Propone solo libri presenti nelle librerie dell'utente (escluso il libro base)</li>
+     *   <li>Evita duplicati tra le tre selezioni</li>
+     *   <li>Salva tramite {@link SuggestionService#inserisciSuggerimento(Suggestion)}</li>
+     * </ul>
+     *
+     * <p>
+     * I libri selezionabili vengono ricavati principalmente da:
+     * </p>
+     * <ul>
+     *   <li>Librerie utente (via {@link LibraryService#listUserLibraries(String)})</li>
+     *   <li>Cache locale (<code>bookCache</code>) e tabella corrente (<code>data</code>) come fallback</li>
+     * </ul>
+     *
+     * @param owner stage proprietario
+     * @param book libro base per cui suggerire altri libri
+     * @see LibraryService#listUserLibraries(String)
+     * @see SuggestionService#inserisciSuggerimento(Suggestion)
+     * @see #bookCache
+     * @see #data
+     */
     private void openSuggestionEditor(Stage owner, Book book) {
         String user = ensureLoggedIn(owner);
         if (user == null || book == null) return;
@@ -1074,9 +1391,10 @@ public class BookRecommenderFX extends Application {
         sub.setWrapText(true);
 
         Label hint = labelMuted(
-                "Puoi consigliare fino a 3 libri.\n" +
-                        "Mostro solo i libri presenti nelle tue librerie.\n" +
-                        "Scrivi nel campo per filtrare (titolo / ID)."
+                """
+                        Puoi consigliare fino a 3 libri.
+                        Mostro solo i libri presenti nelle tue librerie.
+                        Scrivi nel campo per filtrare (titolo / ID)."""
         );
 
         ComboBox<Book> c1 = suggestCombo(myBooks);
@@ -1169,6 +1487,17 @@ public class BookRecommenderFX extends Application {
         d.showAndWait();
     }
 
+
+    /**
+     * Crea una {@link ComboBox} editabile per selezionare un libro da una lista sorgente,
+     * con filtro live su titolo o ID.
+     * <p>
+     * La {@link ComboBox} usa una {@link FilteredList} per filtrare gli elementi in base al testo digitato.
+     * </p>
+     *
+     * @param source lista di libri selezionabili
+     * @return combo box configurata con filtro su titolo/ID
+     */
     private ComboBox<Book> suggestCombo(List<Book> source) {
         ObservableList<Book> base = FXCollections.observableArrayList(source);
         FilteredList<Book> filtered = new FilteredList<>(base, ignoreB -> true);
@@ -1229,6 +1558,12 @@ public class BookRecommenderFX extends Application {
         return cb;
     }
 
+
+    /**
+     * Crea uno {@link Spinner} intero configurato per valori da 1 a 5.
+     *
+     * @return spinner 1..5 (valore iniziale 3)
+     */
     private static Spinner<Integer> spinner1to5() {
         Spinner<Integer> sp = new Spinner<>();
         sp.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 5, 3));
@@ -1236,8 +1571,20 @@ public class BookRecommenderFX extends Application {
         return sp;
     }
 
-    // ---------------- Reserved / Auth ----------------
 
+    // ---------------- Reserved / Auth ----------------
+    /**
+     * Apre l'area riservata (dialog) con accesso a funzionalità utente:
+     * librerie, valutazioni, consigli e profilo account.
+     * <p>
+     * Richiede login (tramite {@link #ensureLoggedIn(Stage)}). Dopo la chiusura delle finestre
+     * viene aggiornata la UI tramite {@link #refreshUserUi()}.
+     * </p>
+     *
+     * @param owner stage proprietario
+     * @see #ensureLoggedIn(Stage)
+     * @see #refreshUserUi()
+     */
     private void openReservedHome(Stage owner) {
         String user = ensureLoggedIn(owner);
         if (user == null) return;
@@ -1287,6 +1634,14 @@ public class BookRecommenderFX extends Application {
         d.showAndWait();
     }
 
+
+    /**
+     * Crea un pulsante con stile "ghost" che esegue un'azione {@link Runnable}.
+     *
+     * @param text testo del pulsante
+     * @param action azione da eseguire al click
+     * @return pulsante configurato
+     */
     private Button makeGhost(String text, Runnable action) {
         Button b = new Button(text);
         b.getStyleClass().add("ghost");
@@ -1295,6 +1650,17 @@ public class BookRecommenderFX extends Application {
         return b;
     }
 
+
+    /**
+     * Apre un dialog di login.
+     * <p>
+     * In caso di successo aggiorna la UI e chiude il dialog.
+     * </p>
+     *
+     * @param owner stage proprietario
+     * @see AuthService#login(String, String)
+     * @see #refreshUserUi()
+     */
     private void openLogin(Stage owner) {
         Dialog<Void> d = new Dialog<>();
         d.initOwner(owner);
@@ -1347,6 +1713,19 @@ public class BookRecommenderFX extends Application {
         d.showAndWait();
     }
 
+
+    /**
+     * Apre un dialog di registrazione utente.
+     * <p>
+     * Esegue validazioni base (campi obbligatori, username, CF, email, robustezza password).
+     * Dopo la registrazione tenta login e apre l'area riservata.
+     * </p>
+     *
+     * @param owner stage proprietario
+     * @see AuthService#registrazione(User)
+     * @see AuthService#login(String, String)
+     * @see #openReservedHome(Stage)
+     */
     private void openRegister(Stage owner) {
         Dialog<Void> d = new Dialog<>();
         d.initOwner(owner);
@@ -1374,7 +1753,6 @@ public class BookRecommenderFX extends Application {
         email.setOnAction(e -> btn.fire());
         username.setOnAction(e -> btn.fire());
 
-        // password manager: stesso trucco
         pw.getNode().lookupAll(".text-field").forEach(n -> {
             if (n instanceof TextField tf) tf.setOnAction(ev -> btn.fire());
         });
@@ -1428,13 +1806,19 @@ public class BookRecommenderFX extends Application {
         grid.setVgap(10);
 
         int r = 0;
-        grid.add(label("Nome"), 0, r); grid.add(nome, 1, r++);
-        grid.add(label("Cognome"), 0, r); grid.add(cognome, 1, r++);
-        grid.add(label("Codice fiscale"), 0, r); grid.add(cf, 1, r++);
-        grid.add(label("Email"), 0, r); grid.add(email, 1, r++);
-        grid.add(label("Username"), 0, r); grid.add(username, 1, r++);
-        grid.add(label("Password"), 0, r); grid.add(pw.getNode(), 1, r++);
-        grid.add(label("Ripeti password"), 0, r); grid.add(pw2.getNode(), 1, r++);
+        grid.add(label("Nome"), 0, r); grid.add(nome, 1, r);
+        grid.add(label("Cognome"), 0, r);
+        grid.add(cognome, 1, r++);
+        grid.add(label("Codice fiscale"), 0, r);
+        grid.add(cf, 1, r++);
+        grid.add(label("Email"), 0, r);
+        grid.add(email, 1, r++);
+        grid.add(label("Username"), 0, r);
+        grid.add(username, 1, r++);
+        grid.add(label("Password"), 0, r);
+        grid.add(pw.getNode(), 1, r);
+        grid.add(label("Ripeti password"), 0, r);
+        grid.add(pw2.getNode(), 1, r);
 
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setMinWidth(160);
@@ -1455,6 +1839,13 @@ public class BookRecommenderFX extends Application {
         d.showAndWait();
     }
 
+
+    /**
+     * Verifica se l'utente è autenticato; in caso contrario mostra un errore e ritorna <code>null</code>.
+     *
+     * @param owner stage proprietario
+     * @return userid dell'utente corrente se autenticato, altrimenti <code>null</code>
+     */
     private String ensureLoggedIn(Stage owner) {
         if (authService.getCurrentUserid() != null) return authService.getCurrentUserid();
         FxUtil.error(owner, "Accesso richiesto", "Devi effettuare il login per accedere a questa funzione.");
@@ -1462,16 +1853,52 @@ public class BookRecommenderFX extends Application {
     }
 
     // ---------------- Helpers ----------------
-
+    /**
+     * Normalizza una stringa: se <code>null</code> ritorna stringa vuota, altrimenti fa <code>trim()</code>.
+     *
+     * @param s input
+     * @return stringa normalizzata
+     */
     private static String safe(String s) { return s == null ? "" : s.trim(); }
+
+
+    /**
+     * Ritorna <code>def</code> se <code>s</code> è <code>null</code> o blank, altrimenti ritorna <code>s</code>.
+     *
+     * @param s stringa
+     * @param def valore di default
+     * @return stringa non vuota
+     */
     private static String nvl(String s, String def) { return (s == null || s.isBlank()) ? def : s; }
 
+
+    /**
+     * Crea una {@link Label} con stile "muted" usata come etichetta descrittiva nei form.
+     *
+     * @param text testo dell'etichetta
+     * @return label stilizzata
+     */
     private static Label label(String text) {
         Label l = new Label(text);
         l.getStyleClass().add("muted");
         return l;
     }
 
+
+    /**
+     * Avvolge un contenuto in uno {@link ScrollPane} configurato per UI "card".
+     * <p>
+     * Imposta:
+     * </p>
+     * <ul>
+     *   <li>fitToWidth/fitToHeight</li>
+     *   <li>Barra orizzontale disabilitata</li>
+     *   <li>Stile trasparente (evita bordi/riquadri)</li>
+     * </ul>
+     *
+     * @param content contenuto da rendere scrollabile
+     * @return scroll pane configurato
+     */
     private static ScrollPane wrapScroll(Node content) {
         ScrollPane sp = new ScrollPane(content);
         sp.setFitToWidth(true);
@@ -1487,7 +1914,16 @@ public class BookRecommenderFX extends Application {
         return sp;
     }
 
-    private void loadInitialResults(Stage owner) {
+
+    /**
+     * Carica una prima lista di risultati per popolare la tabella all'avvio.
+     * <p>
+     * Effettua una ricerca con una parola comune e limita i risultati in base allo spinner limit.
+     * In caso di errore non blocca l'applicazione.
+     * </p>
+     *
+     */
+    private void loadInitialResults() {
         try {
             int limit = spLimit.getValue();
 
@@ -1517,7 +1953,18 @@ public class BookRecommenderFX extends Application {
     }
 
 
-
+    /**
+     * Installa comportamenti per "commit" del valore dello {@link Spinner} quando:
+     * </p>
+     * <ul>
+     *   <li>l'editor perde focus</li>
+     *   <li>Si preme invio nell'editor</li>
+     * </ul>
+     * Inoltre evita cambi involontari tramite scroll quando il controllo non è focalizzato.
+     *
+     * @param sp spinner da configurare
+     * @see #commitSpinnerEditor(Spinner, SpinnerValueFactory.IntegerSpinnerValueFactory)
+     */
     private static void installSpinnerCommit(Spinner<Integer> sp) {
         if (sp == null || sp.getValueFactory() == null) return;
 
@@ -1539,6 +1986,16 @@ public class BookRecommenderFX extends Application {
         });
     }
 
+
+    /**
+     * Converte il testo dell'editor dello spinner in un intero valido e aggiorna il {@link SpinnerValueFactory}.
+     * <p>
+     * Se il testo non è numerico, ripristina il valore precedente valido.
+     * </p>
+     *
+     * @param sp spinner
+     * @param vf value factory dello spinner
+     */
     private static void commitSpinnerEditor(Spinner<Integer> sp, SpinnerValueFactory.IntegerSpinnerValueFactory vf) {
         String txt = sp.getEditor().getText();
         if (txt == null || txt.isBlank()) return;
@@ -1554,7 +2011,12 @@ public class BookRecommenderFX extends Application {
     }
 
 
-
+    /**
+     * Crea una {@link Label} con stile "muted" e testo a capo, usata per messaggi e hint.
+     *
+     * @param text testo da visualizzare
+     * @return label stilizzata
+     */
     private static Label labelMuted(String text) {
         Label l = new Label(text);
         l.getStyleClass().add("muted");
@@ -1562,6 +2024,15 @@ public class BookRecommenderFX extends Application {
         return l;
     }
 
+
+    /**
+     * Crea una riga header con un elemento a sinistra e uno a destra,
+     * separati da uno spacer che cresce.
+     *
+     * @param left elemento sinistro (tipicamente un titolo)
+     * @param right elemento destro (tipicamente pulsanti azione)
+     * @return contenitore orizzontale header
+     */
     private static HBox headerRow(Label left, Node right) {
         HBox row = new HBox(10, left, new Pane(), right);
         HBox.setHgrow(row.getChildren().get(1), Priority.ALWAYS);
@@ -1569,6 +2040,13 @@ public class BookRecommenderFX extends Application {
         return row;
     }
 
+
+    /**
+     * Entry point Java standard che avvia l'applicazione JavaFX.
+     *
+     * @param args argomenti da linea di comando
+     * @see Application#launch(String...)
+     */
     public static void main(String[] args) {
         launch(args);
     }

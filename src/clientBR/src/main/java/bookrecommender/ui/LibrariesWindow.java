@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
  * dettagli dei libri a partire dagli identificatori.
  *
  * @author Matteo Ferrario
- * @version 1.0
+ * @version 2.0
  * @see bookrecommender.service.LibraryService
  * @see bookrecommender.service.AuthService
  * @see bookrecommender.repo.LibriRepository
@@ -86,7 +86,7 @@ public class LibrariesWindow extends Stage {
         root.getStyleClass().add("app-bg");
         root.setTop(buildHeader());
         root.setCenter(buildCenter());
-        root.setBottom(FxUtil.buildFooter());
+        root.setBottom(FxUtil.buildFooter(""));
 
         Scene scene = new Scene(new StackPane(root), 980, 560);
         URL css = getClass().getResource("/bookrecommender/ui/app.css");
@@ -102,6 +102,13 @@ public class LibrariesWindow extends Stage {
         loadLibraries();
     }
 
+
+    /**
+     * Costruisce l'header grafico della finestra, con titolo dinamico e sottotitolo descrittivo.
+     *
+     * @return nodo JavaFX per la sezione header
+     * @see #loadLibraries()
+     */
     private Node buildHeader() {
         lblHeader = new Label("Le tue librerie");
         lblHeader.getStyleClass().add("title");
@@ -114,6 +121,28 @@ public class LibrariesWindow extends Stage {
         return box;
     }
 
+
+    /**
+     * Costruisce il contenuto centrale della finestra.
+     * <p>
+     * Layout:
+     * </p>
+     * <ul>
+     *   <li>Pannello sinistro: tabella librerie + azioni (crea/rinomina/elimina)</li>
+     *   <li>Pannello destro: tabella libri della libreria selezionata + azione rimozione libro</li>
+     * </ul>
+     *
+     * <p>
+     * La selezione di una libreria nella tabella sinistra aggiorna automaticamente
+     * la lista libri tramite {@link #loadBooksOf(Library)}.
+     * </p>
+     *
+     * @return nodo JavaFX centrale
+     * @see #createNewLibrary()
+     * @see #renameLibrary()
+     * @see #deleteLibrary()
+     * @see #removeBookFromLibrary()
+     */
     private Node buildCenter() {
         VBox left = new VBox(10);
         left.getStyleClass().add("card");
@@ -204,6 +233,15 @@ public class LibrariesWindow extends Stage {
     }
 
 
+    /**
+     * Carica dal servizio remoto tutte le librerie dell'utente corrente e aggiorna la tabella.
+     * <p>
+     * Se nessun utente è autenticato, svuota le liste e aggiorna header indicando che serve login.
+     * </p>
+     *
+     * @see AuthService#getCurrentUserid()
+     * @see LibraryService#listUserLibraries(String)
+     */
     private void loadLibraries() {
         String user = authService.getCurrentUserid();
         if (user == null) {
@@ -224,6 +262,16 @@ public class LibrariesWindow extends Stage {
         }
     }
 
+
+    /**
+     * Popola la tabella dei libri a partire dagli ID presenti nella libreria selezionata.
+     * <p>
+     * Risolve ogni ID tramite {@link LibriRepository#findById(Integer)} e scarta eventuali risultati null.
+     * </p>
+     *
+     * @param lib libreria selezionata
+     * @see LibriRepository#findById(Integer)
+     */
     private void loadBooksOf(Library lib) {
         booksData.clear();
         if (lib == null) return;
@@ -236,6 +284,17 @@ public class LibrariesWindow extends Stage {
         booksData.setAll(bs);
     }
 
+
+    /**
+     * Apre un dialog per creare una nuova libreria e la salva tramite {@link LibraryService}.
+     * <p>
+     * Validazione: nome minimo 5 caratteri.
+     * Dopo il salvataggio ricarica l'elenco librerie.
+     * </p>
+     *
+     * @see LibraryService#saveLibrary(Library)
+     * @see #loadLibraries()
+     */
     private void createNewLibrary() {
         String user = authService.getCurrentUserid();
         if (user == null) return;
@@ -266,6 +325,18 @@ public class LibrariesWindow extends Stage {
         }
     }
 
+
+    /**
+     * Rinomina la libreria selezionata.
+     * <p>
+     * Chiede un nuovo nome, confronta con quello attuale e, se diverso,
+     * salva una nuova istanza di {@link Library} tramite {@link LibraryService}.
+     * </p>
+     *
+     * @see LibraryService#saveLibrary(Library)
+     * @see #checkLibrary()
+     * @see #loadLibraries()
+     */
     private void renameLibrary() {
         Library sel = tblLibs.getSelectionModel().getSelectedItem();
         if (sel == null) return;
@@ -292,6 +363,17 @@ public class LibrariesWindow extends Stage {
         }
     }
 
+
+    /**
+     * Elimina la libreria selezionata dopo conferma utente.
+     * <p>
+     * Dopo l'eliminazione ricarica l'elenco librerie.
+     * </p>
+     *
+     * @see FxUtil#confirm(javafx.stage.Window, String, String)
+     * @see LibraryService#deleteLibrary(String, String)
+     * @see #loadLibraries()
+     */
     private void deleteLibrary() {
         Library sel = tblLibs.getSelectionModel().getSelectedItem();
         if (sel == null) return;
@@ -308,6 +390,18 @@ public class LibrariesWindow extends Stage {
         }
     }
 
+
+    /**
+     * Rimuove il libro selezionato dalla libreria selezionata.
+     * <p>
+     * Opera creando un nuovo insieme di ID e salvando la libreria aggiornata tramite {@link LibraryService}.
+     * Dopo l'aggiornamento ricarica l'elenco librerie (e quindi anche la tabella libri).
+     * </p>
+     *
+     * @see FxUtil#confirm(javafx.stage.Window, String, String)
+     * @see LibraryService#saveLibrary(Library)
+     * @see #loadLibraries()
+     */
     private void removeBookFromLibrary() {
         Library lib = tblLibs.getSelectionModel().getSelectedItem();
         Book b = tblBooks.getSelectionModel().getSelectedItem();
@@ -330,6 +424,7 @@ public class LibrariesWindow extends Stage {
         }
     }
 
+
     /**
      * Apre la finestra di gestione librerie come dialog modale
      * e blocca l'esecuzione fino alla sua chiusura.
@@ -346,6 +441,16 @@ public class LibrariesWindow extends Stage {
     }
 
 
+    /**
+     * Mostra un dialog di input per ottenere un nome libreria e applica una validazione minima.
+     * <p>
+     * Ritorna la stringa inserita (trim) oppure stringa vuota se l'utente annulla.
+     * In caso di lunghezza insufficiente mostra un errore.
+     * </p>
+     *
+     * @return nome libreria inserito (trim) o stringa vuota
+     * @see TextInputDialog
+     */
     private String checkLibrary(){
         TextInputDialog d = new TextInputDialog();
         d.initOwner(this);

@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
  * dal {@link ReviewService}.
  *
  * @author Matteo Ferrario
- * @version 1.0
+ * @version 2.0
  * @see bookrecommender.service.ReviewService
  * @see bookrecommender.service.AuthService
  * @see bookrecommender.repo.LibriRepository
@@ -89,7 +89,7 @@ public class ReviewsWindow extends Stage {
         root.getStyleClass().add("app-bg");
         root.setTop(buildHeader());
         root.setCenter(buildCenter());
-        root.setBottom(buildFooter("Seleziona una valutazione e premi Elimina per rimuoverla."));
+        root.setBottom(FxUtil.buildFooter("Seleziona una valutazione e premi Elimina per rimuoverla."));
 
 
         Scene scene = new Scene(new StackPane(root), 980, 560);
@@ -107,6 +107,13 @@ public class ReviewsWindow extends Stage {
         load();
     }
 
+
+    /**
+     * Costruisce l'header grafico della finestra valutazioni.
+     *
+     * @return nodo JavaFX dell'header
+     * @see #load()
+     */
     private Node buildHeader() {
         lblHeader = new Label("Valutazioni");
         lblHeader.getStyleClass().add("title");
@@ -119,21 +126,23 @@ public class ReviewsWindow extends Stage {
         return box;
     }
 
-    private Node buildFooter(String hintText) {
-        Label hint = new Label(hintText == null ? "" : hintText);
-        hint.getStyleClass().add("muted");
 
-        Button close = new Button("Chiudi");
-        close.getStyleClass().add("ghost");
-        close.setOnAction(e -> close.getScene().getWindow().hide());
-
-        HBox bar = new HBox(10, hint, new Pane(), close);
-        HBox.setHgrow(bar.getChildren().get(1), Priority.ALWAYS);
-        bar.getStyleClass().add("statusbar");
-        return bar;
-    }
-
-
+    /**
+     * Costruisce il contenuto centrale con tabella valutazioni e barra azioni.
+     * <p>
+     * La tabella mostra:
+     * </p>
+     * <ul>
+     *   <li>ID libro</li>
+     *   <li>Titolo (risolto tramite {@link LibriRepository} o cache <code>titleCache</code>)</li>
+     *   <li>Voto finale</li>
+     *   <li>commento</li>
+     * </ul>
+     *
+     * @return nodo JavaFX centrale
+     * @see FxUtil#buildReloadDeleteBar(TableView, String, Runnable, String, Runnable)
+     * @see FxUtil#wrapCard(VBox)
+     */
     private Node buildCenter() {
         VBox card = new VBox(10);
         card.getStyleClass().add("card2");
@@ -183,6 +192,17 @@ public class ReviewsWindow extends Stage {
     }
 
 
+    /**
+     * Ricarica le valutazioni dell'utente corrente e aggiorna la tabella.
+     * <p>
+     * Se nessun utente è autenticato, svuota la lista e aggiorna l'header indicando che serve login.
+     * Dopo il caricamento pre-carica i titoli mancanti dal server tramite {@link #preloadTitlesFromServer()}.
+     * </p>
+     *
+     * @see AuthService#getCurrentUserid()
+     * @see ReviewService#listByUser(String)
+     * @see #preloadTitlesFromServer()
+     */
     private void load() {
         String user = authService.getCurrentUserid();
         if (user == null) {
@@ -202,6 +222,18 @@ public class ReviewsWindow extends Stage {
         }
     }
 
+
+    /**
+     * Pre-carica dal server i titoli dei libri associati alle valutazioni presenti in tabella.
+     * <p>
+     * Recupera l'insieme degli ID libro dalle recensioni correnti e, per quelli non ancora presenti
+     * nella cache <code>titleCache</code>, invia una richiesta al server tramite {@link BRProxy}.
+     * </p>
+     *
+     * @see Request#getBookById(int)
+     * @see BRProxy#call(bookrecommender.net.Request)
+     * @see #titleCache
+     */
     private void preloadTitlesFromServer() {
     // carica solo i titoli mancanti
         Set<Integer> ids = reviews.stream()
@@ -227,6 +259,16 @@ public class ReviewsWindow extends Stage {
     }
 
 
+    /**
+     * Elimina la valutazione selezionata dopo conferma dell'utente.
+     * <p>
+     * Mostra un dialog di conferma; se l'operazione va a buon fine ricarica l'elenco tramite {@link #load()}.
+     * </p>
+     *
+     * @see ReviewService#deleteReview(String, int)
+     * @see FxUtil#confirm(javafx.stage.Window, String, String)
+     * @see #load()
+     */
     private void deleteSelected() {
         Review r = tbl.getSelectionModel().getSelectedItem();
         if (r == null) return;

@@ -23,15 +23,32 @@ import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 
+
 /**
- * Finestra modale per la visualizzazione e gestione dei consigli
- * (suggerimenti di libri correlati) inseriti dall'utente.
+ * Finestra modale per la visualizzazione e gestione dei consigli (suggerimenti) inseriti dall'utente.
+ * <p>
+ * La finestra mostra una tabella contenente:
+ * </p>
+ * <ul>
+ *   <li>Libro base: ID e titolo;</li>
+ *   <li>Libri suggeriti: massimo 3 titoli, visualizzati sempre per nome (mai per ID).</li>
+ * </ul>
  *
- * Mostra:
- * - libro base (ID + titolo)
- * - suggeriti (max 3) per TITOLO (mai ID)
+ * <p>
+ * La risoluzione dei titoli avviene in modo robusto tramite:
+ * </p>
+ * <ol>
+ *   <li>Cache in memoria (<code>titleCache</code>);</li>
+ *   <li>Repository client {@link LibriRepository} (se popolato come cache locale);</li>
+ *   <li>Chiamata remota al server (<code>GET_BOOK_BY_ID</code>).</li>
+ * </ol>
  *
- * Richiede GET_BOOK_BY_ID lato server per risolvere i titoli quando il repo client è vuoto/cache.
+ * @author Richard zefi
+ * @version 1.0
+ * @see SuggestionService
+ * @see AuthService
+ * @see LibriRepository
+ * @see BRProxy
  */
 public class SuggestionsWindow extends Stage {
 
@@ -47,6 +64,24 @@ public class SuggestionsWindow extends Stage {
     private TableView<Suggestion> tbl;
     private Label lblHeader;
 
+
+    /**
+     * Costruisce e inizializza la finestra dei consigli.
+     * <p>
+     * Nel costruttore vengono:
+     * </p>
+     * <ul>
+     *   <li>Memorizzate le dipendenze verso servizi e repository;</li>
+     *   <li>Configurate title e modalità modale;</li>
+     *   <li>Costruiti header, contenuto centrale e footer;</li>
+     *   <li>Applicato il foglio di stile <code>app.css</code>;</li>
+     *   <li>Caricati i consigli dell'utente corrente (se presente).</li>
+     * </ul>
+     *
+     * @param authService servizio di autenticazione per individuare l'utente corrente
+     * @param suggestionService servizio di gestione dei consigli
+     * @param libriRepo repository dei libri, usato per risolvere i dettagli dai relativi ID
+     */
     public SuggestionsWindow(AuthService authService, SuggestionService suggestionService, LibriRepository libriRepo) {
         this.authService = authService;
         this.suggestionService = suggestionService;
@@ -59,7 +94,7 @@ public class SuggestionsWindow extends Stage {
         root.getStyleClass().add("app-bg");
         root.setTop(buildHeader());
         root.setCenter(buildCenter());
-        root.setBottom(buildFooter("Seleziona un consiglio e premi Elimina per rimuoverlo."));
+        root.setBottom(FxUtil.buildFooter("Seleziona un consiglio e premi Elimina per rimuoverlo."));
 
         Scene scene = new Scene(new StackPane(root), 980, 560);
 
@@ -76,6 +111,13 @@ public class SuggestionsWindow extends Stage {
         load();
     }
 
+
+    /**
+     * Costruisce l'header grafico della finestra.
+     *
+     * @return nodo JavaFX dell'header
+     * @see #load()
+     */
     private Node buildHeader() {
         lblHeader = new Label("Consigli");
         lblHeader.getStyleClass().add("title");
@@ -88,20 +130,17 @@ public class SuggestionsWindow extends Stage {
         return box;
     }
 
-    private static Node buildFooter(String hintText) {
-        Label hint = new Label(hintText == null ? "" : hintText);
-        hint.getStyleClass().add("muted");
 
-        Button closeBtn = new Button("Chiudi");
-        closeBtn.getStyleClass().add("ghost");
-        closeBtn.setOnAction(e -> closeBtn.getScene().getWindow().hide());
-
-        HBox bar = new HBox(10, hint, new Pane(), closeBtn);
-        HBox.setHgrow(bar.getChildren().get(1), Priority.ALWAYS);
-        bar.getStyleClass().add("statusbar");
-        return bar;
-    }
-
+    /**
+     * Costruisce il contenuto centrale della finestra.
+     * <p>
+     * Crea la tabella consigli e la barra azioni (ricarica/elimina).
+     * </p>
+     *
+     * @return nodo JavaFX centrale
+     * @see FxUtil#buildReloadDeleteBar(TableView, String, Runnable, String, Runnable)
+     * @see FxUtil#wrapCard(VBox)
+     */
     private Node buildCenter() {
         VBox card = new VBox(10);
         card.getStyleClass().add("card2");
@@ -143,6 +182,26 @@ public class SuggestionsWindow extends Stage {
         return FxUtil.wrapCard(card);
     }
 
+
+    /**
+     * Ricarica i consigli dell'utente corrente e aggiorna la tabella.
+     * <p>
+     * Se nessun utente è autenticato:
+     * </p>
+     * <ul>
+     *   <li>Svuota l'elenco consigli;</li>
+     *   <li>Svuota la cache titoli;</li>
+     *   <li>Aggiorna l'header indicando che serve login.</li>
+     * </ul>
+     *
+     * <p>
+     * Dopo il caricamento pre-carica i titoli necessari tramite {@link #preloadTitlesFromServer()}.
+     * </p>
+     *
+     * @see AuthService#getCurrentUserid()
+     * @see SuggestionService#listByUser(String)
+     * @see #preloadTitlesFromServer()
+     */
     private void load() {
         String user = authService.getCurrentUserid();
         if (user == null) {
@@ -163,6 +222,17 @@ public class SuggestionsWindow extends Stage {
         }
     }
 
+
+    /**
+     * Elimina il consiglio selezionato dopo conferma utente.
+     * <p>
+     * Se l'operazione va a buon fine ricarica l'elenco tramite {@link #load()}.
+     * </p>
+     *
+     * @see SuggestionService#deleteSuggestion(String, int)
+     * @see FxUtil#confirm(javafx.stage.Window, String, String)
+     * @see #load()
+     */
     private void deleteSelected() {
         Suggestion s = tbl.getSelectionModel().getSelectedItem();
         if (s == null) return;
@@ -180,12 +250,21 @@ public class SuggestionsWindow extends Stage {
         }
     }
 
+
     /**
-     * Risolve un titolo in modo robusto:
-     * 1) cache in-memory (titleCache)
-     * 2) repo client (se ha cache locale)
-     * 3) server GET_BOOK_BY_ID
-     * fallback: "(n/d)"
+     * Risolve il titolo di un libro dato il suo ID, usando una strategia a fallback:
+     * <ol>
+     *   <li>Cache in memoria (<code>titleCache</code>);</li>
+     *   <li>Cache locale tramite {@link LibriRepository#findById(Integer)};</li>
+     *   <li>Richiesta remota al server tramite <code>GET_BOOK_BY_ID</code>.</li>
+     * </ol>
+     * In caso di fallimento ritorna <code>(n/d)</code> e aggiorna comunque la cache.
+     *
+     * @param bookId identificativo del libro
+     * @return titolo risolto oppure <code>(n/d)</code>
+     * @see Request#getBookById(int)
+     * @see BRProxy#call(bookrecommender.net.Request)
+     * @see LibriRepository#findById(Integer)
      */
     private String resolveTitle(int bookId) {
         String cached = titleCache.get(bookId);
@@ -215,8 +294,22 @@ public class SuggestionsWindow extends Stage {
         return "(n/d)";
     }
 
+
     /**
-     * Precarica titoli per libro base e suggeriti (max 3) per rendere la tabella immediata.
+     * Pre-carica i titoli necessari per rendere la tabella immediata.
+     * <p>
+     * Raccoglie tutti gli ID coinvolti:
+     * </p>
+     * <ul>
+     *   <li>ID libro base di ogni consiglio;</li>
+     *   <li>ID dei libri suggeriti (se presenti, massimo 3 per consiglio).</li>
+     * </ul>
+     *
+     * <p>
+     * La cache viene popolata usando {@link #resolveTitle(int)}.
+     * </p>
+     *
+     * @see #resolveTitle(int)
      */
     private void preloadTitlesFromServer() {
         // raccoglie tutti gli id: libro base + suggeriti
@@ -239,9 +332,17 @@ public class SuggestionsWindow extends Stage {
         }
     }
 
+
     /**
-     * Mostra SEMPRE titoli (mai ID).
-     * Se un titolo non è risolvibile => "(n/d)".
+     * Formatta i titoli dei libri suggeriti (max 3) associati a un consiglio.
+     * <p>
+     * Mostra sempre titoli (mai ID). Se un titolo non è risolvibile viene usato <code>(n/d)</code>.
+     * Se la lista suggeriti è vuota o nulla, ritorna <code>-</code>.
+     * </p>
+     *
+     * @param s consiglio da formattare
+     * @return stringa con titoli separati da <code> • </code> oppure <code>-</code>
+     * @see #resolveTitle(int)
      */
     private String formatSuggestedTitles(Suggestion s) {
         List<Integer> ids = s.getSuggeriti();
@@ -251,10 +352,18 @@ public class SuggestionsWindow extends Stage {
                 .filter(Objects::nonNull)
                 .distinct()
                 .limit(3)
-                .map(id -> resolveTitle(id))  // mai ID
+                .map(this::resolveTitle)  // mai ID
                 .collect(Collectors.joining(" • "));
     }
 
+
+    /**
+     * Apre la finestra dei consigli come dialog modale e blocca l'esecuzione finché l'utente non la chiude.
+     *
+     * @param authService servizio di autenticazione per individuare l'utente corrente
+     * @param suggestionService servizio di gestione dei consigli
+     * @param repo repository dei libri, usato per risolvere i dettagli dei volumi
+     */
     public static void open(AuthService authService, SuggestionService suggestionService, LibriRepository repo) {
         SuggestionsWindow w = new SuggestionsWindow(authService, suggestionService, repo);
         w.showAndWait();

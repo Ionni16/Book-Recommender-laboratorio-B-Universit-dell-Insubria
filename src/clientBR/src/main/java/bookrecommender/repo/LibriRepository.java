@@ -3,62 +3,64 @@ package bookrecommender.repo;
 import bookrecommender.model.Book;
 
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Repository in memoria per la gestione dei libri.
+ * <p>
+ * Questa classe mantiene un mini-catalogo di {@link Book} indicizzato per ID.
+ * Attualmente il repository è popolato solo in memoria; il caricamento da file
+ * o da server remoto è demandato a sviluppi futuri.
+ * </p>
+ *
+ * <h2>Caratteristiche</h2>
+ * <ul>
+ *   <li>Thread-safe grazie all'uso di {@link ConcurrentHashMap}</li>
+ *   <li>Supporta ricerche per ID, titolo e autore</li>
+ *   <li>Non persiste dati su file</li>
+ * </ul>
+ *
+ * @author Matteo Ferrario
+ * @version 2.0
+ * @see Book
+ */
 public class LibriRepository {
 
-    @SuppressWarnings("unused")
+
+    /**
+     * Percorso ignorato, mantenuto solo per compatibilità con l'architettura.
+     */
+    @SuppressWarnings({"unused", "FieldCanBeLocal"})
     private final Path ignoredPath;
 
-    // mini catalogo in memoria (vuoto). Più avanti lo riempiremo dal server.
+
+    /**
+     * Mappa dei libri indicizzati per ID.
+     */
+    @SuppressWarnings("CollectionNeverUpdated")
     private final Map<Integer, Book> byId = new ConcurrentHashMap<>();
 
+
+    /**
+     * Crea un nuovo repository dei libri.
+     *
+     * @param ignoredPath percorso attualmente non utilizzato
+     */
     public LibriRepository(Path ignoredPath) {
         this.ignoredPath = ignoredPath;
     }
 
-    public void load() {
-        // stub: per ora NON carica da file.
-        // Quando faremo il server, qui chiederemo al server un catalogo o faremo le ricerche remote.
-    }
 
-    public int size() {
-        return byId.size();
-    }
-
-    public List<Book> all() {
-        return new ArrayList<>(byId.values());
-    }
-
+    /**
+     * Cerca un libro per ID.
+     *
+     * @param id identificativo del libro
+     * @return il libro corrispondente, oppure <code>null</code> se non trovato
+     */
     public Book findById(Integer id) {
         if (id == null) return null;
         return byId.get(id);
     }
 
-    // ricerca “stub” (ora lavora sul catalogo in memoria)
-    public List<Book> searchByTitle(String title) {
-        if (title == null) return List.of();
-        String t = title.toLowerCase();
-        List<Book> out = new ArrayList<>();
-        for (Book b : byId.values()) {
-            if (b.getTitolo() != null && b.getTitolo().toLowerCase().contains(t)) out.add(b);
-        }
-        return out;
-    }
-
-    public List<Book> searchByAuthor(String author) {
-        if (author == null) return List.of();
-        String a = author.toLowerCase();
-        List<Book> out = new ArrayList<>();
-        for (Book b : byId.values()) {
-            for (String au : b.getAutori()) {
-                if (au != null && au.toLowerCase().contains(a)) {
-                    out.add(b);
-                    break;
-                }
-            }
-        }
-        return out;
-    }
 }

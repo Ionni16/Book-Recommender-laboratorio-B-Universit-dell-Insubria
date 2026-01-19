@@ -64,7 +64,7 @@ public class UserProfileWindow extends Stage {
         root.getStyleClass().add("app-bg");
         root.setTop(buildHeader());
         root.setCenter(buildCenter());
-        root.setBottom(FxUtil.buildFooter());
+        root.setBottom(FxUtil.buildFooter(""));
 
         Scene scene = new Scene(new StackPane(root), 820, 560);
 
@@ -75,11 +75,18 @@ public class UserProfileWindow extends Stage {
             System.err.println("CSS NON trovato: /bookrecommender/ui/app.css");
         }
 
-
-
         setScene(scene);
     }
 
+
+    /**
+     * Costruisce l'header grafico della finestra profilo.
+     * <p>
+     * Contiene titolo e sottotitolo e applica lo stile CSS dell'appbar.
+     * </p>
+     *
+     * @return nodo JavaFX per la sezione header
+     */
     private Node buildHeader() {
         Label h = new Label("Account");
         h.getStyleClass().add("title");
@@ -92,6 +99,37 @@ public class UserProfileWindow extends Stage {
         return box;
     }
 
+
+    /**
+     * Costruisce il contenuto centrale della finestra profilo.
+     * <p>
+     * Struttura principale:
+     * </p>
+     * <ul>
+     *   <li>Card con dati personali (sola lettura)</li>
+     *   <li>Card email: validazione e salvataggio immediato</li>
+     *   <li>Card password: cambio password con conferma</li>
+     *   <li>"Zona pericolosa": eliminazione account con conferma</li>
+     * </ul>
+     *
+     * <p>
+     * Il contenuto è inserito in uno {@link ScrollPane} per supportare finestre piccole.
+     * Viene inoltre forzata la trasparenza della viewport via {@link Platform#runLater(Runnable)}
+     * per compatibilità con alcune versioni JavaFX che ignorano lo stile CSS.
+     * </p>
+     *
+     * @return nodo JavaFX centrale (scrollable) della finestra
+     * @throws RuntimeException se operazioni remote falliscono e vengono propagate (dipende dai metodi di servizio)
+     * @see AuthService#getCurrentUserid()
+     * @see AuthService#getUser(String)
+     * @see AuthService#updateEmail(String, String)
+     * @see AuthService#updatePassword(String, String)
+     * @see AuthService#deleteUser(String)
+     * @see FxUtil#toast(Scene, String)
+     * @see FxUtil#error(javafx.stage.Window, String, String)
+     * @see FxUtil#confirm(javafx.stage.Window, String, String)
+     */
+    @SuppressWarnings("CallToPrintStackTrace")
     private Node buildCenter() {
         String userId = authService.getCurrentUserid();
         if (userId == null) {
@@ -272,6 +310,12 @@ public class UserProfileWindow extends Stage {
     }
 
 
+    /**
+     * Crea una {@link Label} con stile "muted" e wrap attivo, usata per testi secondari.
+     *
+     * @param text testo da visualizzare
+     * @return label stilizzata
+     */
     private static Label muted(String text) {
         Label l = new Label(text);
         l.getStyleClass().add("muted");
@@ -279,10 +323,17 @@ public class UserProfileWindow extends Stage {
         return l;
     }
 
+
+    /**
+     * Normalizza una stringa: se <code>null</code> ritorna stringa vuota,
+     * altrimenti ritorna <code>trim()</code>.
+     *
+     * @param s stringa in input
+     * @return stringa normalizzata
+     */
     private static String safe(String s) {
         return s == null ? "" : s.trim();
     }
-
 
 
     /**

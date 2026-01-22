@@ -16,6 +16,7 @@ import java.util.Objects;
  * @author Ionut Puiu
  * @version 1.0
  */
+@SuppressWarnings("ClassCanBeRecord")
 public class Book implements Serializable {
 
     @Serial

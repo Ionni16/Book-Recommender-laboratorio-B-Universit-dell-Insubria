@@ -1,12 +1,12 @@
 package bookrecommender.ui;
 
 import bookrecommender.model.*;
-import bookrecommender.net.BRProxy;
 import bookrecommender.net.Request;
 import bookrecommender.net.RequestType;
 import bookrecommender.net.Response;
 import bookrecommender.repo.LibriRepository;
 import bookrecommender.service.*;
+import bookrecommender.net.BRProxy;
 
 import javafx.application.Application;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -1806,19 +1806,13 @@ public class BookRecommenderFX extends Application {
         grid.setVgap(10);
 
         int r = 0;
-        grid.add(label("Nome"), 0, r); grid.add(nome, 1, r);
-        grid.add(label("Cognome"), 0, r);
-        grid.add(cognome, 1, r++);
-        grid.add(label("Codice fiscale"), 0, r);
-        grid.add(cf, 1, r++);
-        grid.add(label("Email"), 0, r);
-        grid.add(email, 1, r++);
-        grid.add(label("Username"), 0, r);
-        grid.add(username, 1, r++);
-        grid.add(label("Password"), 0, r);
-        grid.add(pw.getNode(), 1, r);
-        grid.add(label("Ripeti password"), 0, r);
-        grid.add(pw2.getNode(), 1, r);
+        grid.add(label("Nome"), 0, r); grid.add(nome, 1, r++);
+        grid.add(label("Cognome"), 0, r); grid.add(cognome, 1, r++);
+        grid.add(label("Codice fiscale"), 0, r); grid.add(cf, 1, r++);
+        grid.add(label("Email"), 0, r); grid.add(email, 1, r++);
+        grid.add(label("Username"), 0, r); grid.add(username, 1, r++);
+        grid.add(label("Password"), 0, r); grid.add(pw.getNode(), 1, r++);
+        grid.add(label("Ripeti password"), 0, r); grid.add(pw2.getNode(), 1, r++);
 
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setMinWidth(160);

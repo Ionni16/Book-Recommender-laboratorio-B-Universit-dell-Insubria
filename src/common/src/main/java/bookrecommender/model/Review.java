@@ -16,9 +16,9 @@ import java.io.Serializable;
  * @see bookrecommender.model.User
  * @see bookrecommender.model.Book
  */
+@SuppressWarnings("ClassCanBeRecord")
 public class Review implements Serializable {
 
-    private static final long serialVersionUID = 1L;
 
     // --------------- ATTRIBUTI ---------------
     private final String userid;
@@ -127,21 +127,4 @@ public class Review implements Serializable {
      */
     public String getCommento() { return commento;}
 
-
-    // --------------- METODO PUBBLICO ---------------
-    /**
-     * Calcola il voto finale a partire dai voti dei cinque criteri,
-     * come media aritmetica arrotondata all'intero più vicino.
-     *
-     * @param stile        voto assegnato allo stile (1..5)
-     * @param contenuto    voto assegnato al contenuto (1..5)
-     * @param gradevolezza voto assegnato alla gradevolezza (1..5)
-     * @param originalita  voto assegnato all'originalità (1..5)
-     * @param edizione     voto assegnato all'edizione (1..5)
-     * @return il voto finale ottenuto arrotondando la media dei cinque criteri
-     */
-    public static int calcolaVotoFinale(int stile, int contenuto, int gradevolezza, int originalita, int edizione) {
-        double media = (stile + contenuto + gradevolezza + originalita + edizione) / 5.0;
-        return (int)Math.round(media);
-    }
 }

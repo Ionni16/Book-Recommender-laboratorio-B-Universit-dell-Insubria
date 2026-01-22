@@ -1,10 +1,10 @@
 package bookrecommender.service;
 
 import bookrecommender.model.Book;
-import bookrecommender.net.BRProxy;
 import bookrecommender.net.Request;
 import bookrecommender.net.Response;
 import bookrecommender.repo.LibriRepository;
+import bookrecommender.net.BRProxy;
 
 import java.util.Collections;
 import java.util.List;

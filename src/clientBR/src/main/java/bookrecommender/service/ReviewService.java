@@ -1,9 +1,9 @@
 package bookrecommender.service;
 
 import bookrecommender.model.Review;
-import bookrecommender.net.BRProxy;
 import bookrecommender.net.Request;
 import bookrecommender.net.Response;
+import bookrecommender.net.BRProxy;
 
 import java.nio.file.Path;
 import java.util.Collections;

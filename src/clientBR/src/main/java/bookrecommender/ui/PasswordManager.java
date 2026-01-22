@@ -23,7 +23,7 @@ import javafx.scene.layout.StackPane;
  * mostrando/nascondendo i nodi e aggiornando anche {@code managed} per evitare
  * che il layout riservi spazio al controllo non attivo.
  *
- * @author Matteo Ferrario
+ * @author Ionut Puiu
  * @version 1.0
  */
 public class PasswordManager {

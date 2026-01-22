@@ -26,8 +26,44 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Scanner;
 
+/**
+ * Entry point del server del sistema Book Recommender basato su socket.
+ *
+ * <p>
+ * La classe avvia un {@link ServerSocket} su una porta configurata e gestisce richieste
+ * provenienti dai client tramite stream di oggetti. All’avvio legge da input i parametri
+ * di connessione a PostgreSQL, istanzia repository e servizi applicativi e, per ogni
+ * connessione, delega la gestione a un thread dedicato che interpreta {@link RequestType}
+ * e produce una {@link Response}.
+ * </p>
+ *
+ * <ul>
+ *   <li>Inizializzazione della connessione al database e dei componenti applicativi</li>
+ *   <li>Accettazione di connessioni client e gestione concorrente tramite thread</li>
+ *   <li>Dispatch delle richieste (ricerca, autenticazione, librerie, consigli, valutazioni)</li>
+ * </ul>
+ *
+ * @author Richard Zefi
+ * @version 1.0
+ * @see java.net.ServerSocket
+ * @see bookrecommender.net.Request
+ * @see bookrecommender.net.Response
+ */
 public class MainServer {
 
+    /**
+     * Avvia il server: acquisisce i parametri del database, inizializza repository/servizi
+     * e apre la socket di ascolto sulla porta configurata.
+     *
+     * <p>
+     * Per ogni connessione accettata viene creato un thread che delega la gestione
+     * a {@link #handleClient(Socket, LibriRepository, SearchService, AuthService, ValutazioniRepository, UtentiRepository, ConsigliRepository, LibrerieRepository)}.
+     * </p>
+     *
+     * @param args argomenti da riga di comando (non utilizzati)
+     * @throws Exception in caso di errori non gestiti durante l’avvio
+     */
+    @SuppressWarnings("InfiniteLoopStatement")
     public static void main(String[] args) throws Exception {
         int port = 5050;
 
@@ -96,6 +132,26 @@ public class MainServer {
         }
     }
 
+    /**
+     * Gestisce una connessione client interpretando una richiesta e restituendo una risposta.
+     *
+     * <p>
+     * Legge un oggetto dallo stream di input e verifica che sia una {@link Request}.
+     * In base al {@link RequestType} effettua il dispatch verso repository e servizi,
+     * applicando i vincoli applicativi previsti (ad esempio: valutazioni e consigli
+     * consentiti solo per libri presenti in almeno una libreria dell’utente).
+     * La risposta viene inviata come {@link Response} tramite stream di output.
+     * </p>
+     *
+     * @param client socket del client connesso
+     * @param libriRepo repository dei libri
+     * @param searchService servizio di ricerca libri
+     * @param authService servizio di autenticazione e gestione credenziali
+     * @param valutazioniRepo repository delle valutazioni
+     * @param utentiRepo repository degli utenti registrati
+     * @param consigliRepo repository dei consigli
+     * @param librerieRepo repository delle librerie
+     */
     private static void handleClient(
             Socket client,
             LibriRepository libriRepo,
@@ -117,7 +173,7 @@ public class MainServer {
                 return;
             }
 
-            Response resp = switch ((RequestType) req.type) {
+            Response resp = switch (req.type) {
 
                 case PING -> Response.ok("PONG");
 
@@ -145,7 +201,6 @@ public class MainServer {
                     boolean ok = utentiRepo.deleteAccountCascade(userid);
                     yield ok ? Response.ok(true) : Response.fail("Account non eliminato (utente non trovato?)");
                 }
-
 
                 /* =======================
                    LOGIN / REGISTER
@@ -219,7 +274,6 @@ public class MainServer {
                     yield Response.ok(result);
                 }
 
-
                 case DELETE_REVIEW -> {
                     Object[] p = (Object[]) req.payload; // payload: { String userid, Integer bookId }
                     String userid = (String) p[0];
@@ -228,8 +282,6 @@ public class MainServer {
                     boolean ok = valutazioniRepo.delete(userid, bookId);
                     yield ok ? Response.ok(true) : Response.fail("Recensione non trovata o non eliminabile");
                 }
-
-
 
                 /* =======================
                    CONSIGLI
@@ -250,7 +302,6 @@ public class MainServer {
                     int bookId = s.getBookId();
                     List<Integer> suggested = s.getSuggeriti();
 
-
                     // normalizza: unici, max 3, niente bookId uguale
                     LinkedHashSet<Integer> set = new LinkedHashSet<>();
                     for (Integer id : suggested) {
@@ -268,7 +319,6 @@ public class MainServer {
                         yield Response.fail("Puoi consigliare solo libri presenti in una tua libreria");
                     }
 
-                    // vincolo: anche i suggeriti devono essere nelle tue librerie (spec)
                     for (int sid : set) {
                         if (!librerieRepo.userHasBook(userid, sid)) {
                             yield Response.fail("Puoi consigliare solo libri presenti nelle tue librerie (ID " + sid + ")");
@@ -279,7 +329,6 @@ public class MainServer {
                     yield ok ? Response.ok(true) : Response.fail("Salvataggio consiglio fallito");
                 }
 
-
                 // payload: Object[] { String userid, Integer bookId, Integer suggestedId }
                 case DELETE_SUGGESTION -> {
                     Object[] p = (Object[]) req.payload; // { String userid, Integer bookId }
@@ -289,7 +338,6 @@ public class MainServer {
                     consigliRepo.deleteAllForUserBook(userid, bookId);
                     yield Response.ok(true);
                 }
-
 
                 // payload: String userid
                 case LIST_SUGGESTIONS_BY_USER -> {
@@ -313,7 +361,6 @@ public class MainServer {
                     Book b = libriRepo.findById(bookId); // repo JDBC lato server
                     yield Response.ok(b); // se null va bene, client gestisce
                 }
-
 
                 // payload: Library
                 case SAVE_LIBRARY -> {
@@ -339,15 +386,14 @@ public class MainServer {
                     yield ok ? Response.ok(true) : Response.fail("Cambio password fallito");
                 }
 
-
-                default -> Response.fail("Tipo richiesta non supportato: " + req.type);
             };
 
             out.writeObject(resp);
             out.flush();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println(e.getMessage());
+
         }
     }
 }

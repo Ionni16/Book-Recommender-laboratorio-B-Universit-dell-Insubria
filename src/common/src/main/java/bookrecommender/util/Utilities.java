@@ -9,7 +9,22 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Classe di utilità per operazioni comuni sui dati.
+ * Classe di utilità per operazioni di supporto sui dati delle librerie.
+ * <p>
+ * Fornisce metodi statici per:
+ * <ul>
+ *     <li>Caricare le librerie degli utenti da file;</li>
+ *     <li>Verificare se un determinato libro è presente
+ *     in almeno una libreria di un utente.</li>
+ * </ul>
+ * <p>
+ * La classe lavora direttamente sui file di persistenza
+ * (es. {@code Librerie.dati}) ed è pensata come supporto
+ * ai servizi applicativi lato server.
+ *
+ * @author Richard Zefi
+ * @version 1.0
+ * @see bookrecommender.model.Library
  */
 public class Utilities {
 
@@ -22,6 +37,7 @@ public class Utilities {
      * @return true se l'utente ha il libro in almeno una libreria, false altrimenti
      * @throws Exception in caso di errore di I/O
      */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean utenteHaLibroInLibreria(String userid, int bookId, Path fileLibrerie) throws Exception {
         List<Library> allLibraries = loadAllLibraries(fileLibrerie);
         return allLibraries.stream()

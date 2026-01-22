@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  * </ul>
  * I dati vengono letti e aggiornati tramite il {@link AuthService}.
  *
- * @author Matteo Ferrario
+ * @author Ionut Puiu
  * @version 1.0
  * @see bookrecommender.service.AuthService
  */

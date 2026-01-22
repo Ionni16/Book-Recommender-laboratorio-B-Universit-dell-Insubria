@@ -16,9 +16,9 @@ import java.util.Objects;
  * @see bookrecommender.model.Review
  * @see bookrecommender.model.Suggestion
  */
+@SuppressWarnings("ClassCanBeRecord")
 public class User implements Serializable {
 
-    private static final long serialVersionUID = 1L;
 
     // --------------- ATTRIBUTI ---------------
     private final String userid;

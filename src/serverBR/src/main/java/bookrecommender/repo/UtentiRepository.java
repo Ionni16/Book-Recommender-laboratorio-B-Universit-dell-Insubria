@@ -6,16 +6,55 @@ import bookrecommender.model.User;
 import java.sql.*;
 
 /**
- * Repository JDBC per UtentiRegistrati.
+ * Repository JDBC per la gestione degli utenti registrati.
+ *
+ * <p>
+ * La classe fornisce operazioni di accesso ai dati per la tabella degli utenti registrati,
+ * includendo conteggio, ricerca per identificativo, inserimento e aggiornamenti puntuali
+ * (email e hash password). Include inoltre una cancellazione a "cascata" applicativa
+ * che rimuove l’account e i dati collegati tramite una transazione JDBC.
+ * </p>
+ *
+ * <ul>
+ *   <li>Conteggio degli utenti registrati</li>
+ *   <li>Verifica esistenza e recupero dati utente</li>
+ *   <li>Inserimento utente e aggiornamenti di credenziali/contatti</li>
+ *   <li>Cancellazione definitiva dell’account con rimozione dei dati correlati</li>
+ * </ul>
+ *
+ * @author Matteo Ferrario
+ * @version 1.0
+ * @see bookrecommender.db.Db
+ * @see bookrecommender.model.User
  */
+@SuppressWarnings("ClassCanBeRecord")
 public class UtentiRepository {
 
     private final Db db;
 
+    /**
+     * Costruisce il repository inizializzandolo con l’oggetto di accesso al database.
+     *
+     * <p>
+     * L’istanza {@link Db} viene utilizzata per ottenere le connessioni JDBC
+     * necessarie all’esecuzione delle operazioni sugli utenti registrati.
+     * </p>
+     *
+     * @param db oggetto di accesso al database
+     */
     public UtentiRepository(Db db) {
         this.db = db;
     }
 
+    /**
+     * Restituisce il numero totale di utenti registrati.
+     *
+     * <p>
+     * Esegue una query di conteggio sulla tabella degli utenti registrati.
+     * </p>
+     *
+     * @return numero totale di utenti presenti
+     */
     public int count() {
         String sql = "SELECT COUNT(*) FROM br.utenti_registrati";
         try (Connection c = db.getConnection();
@@ -28,10 +67,23 @@ public class UtentiRepository {
         }
     }
 
+    /**
+     * Aggiorna l hash della password di un utente.
+     *
+     * <p>
+     * Esegue un aggiornamento puntuale della colonna {@code password_hash} per l’utente
+     * identificato da {@code userid}. Il metodo restituisce {@code true} solo se viene
+     * aggiornata esattamente una riga.
+     * </p>
+     *
+     * @param userid identificativo dell’utente
+     * @param newHash nuovo hash della password
+     * @return true se l’aggiornamento ha modificato una sola riga, false altrimenti
+     */
     public boolean updatePasswordHash(String userid, String newHash) {
         String sql = "UPDATE br.utenti_registrati SET password_hash=? WHERE userid=?";
         try (Connection c = db.getConnection();
-            PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, newHash);
             ps.setString(2, userid);
             return ps.executeUpdate() == 1;
@@ -40,11 +92,31 @@ public class UtentiRepository {
         }
     }
 
-
+    /**
+     * Verifica l’esistenza di un utente registrato a partire dall’identificativo.
+     *
+     * <p>
+     * La verifica è basata sul recupero dell’utente tramite {@link #findByUserid(String)}.
+     * </p>
+     *
+     * @param userid identificativo dell’utente
+     * @return true se l’utente esiste, false altrimenti
+     */
     public boolean exists(String userid) {
         return findByUserid(userid) != null;
     }
 
+    /**
+     * Recupera un utente registrato a partire dall’identificativo.
+     *
+     * <p>
+     * Se {@code userid} è nullo o vuoto, il metodo restituisce {@code null}.
+     * Se non esiste alcun record corrispondente, restituisce {@code null}.
+     * </p>
+     *
+     * @param userid identificativo dell’utente
+     * @return utente trovato, oppure {@code null} se assente o se {@code userid} non valido
+     */
     public User findByUserid(String userid) {
         if (userid == null || userid.isBlank()) return null;
 
@@ -77,7 +149,16 @@ public class UtentiRepository {
     }
 
     /**
-     * Inserisce un utente (passwordHash deve essere già SHA-256).
+     * Inserisce un nuovo utente registrato.
+     *
+     * <p>
+     * Richiede un oggetto {@link User} non nullo e un {@code userid} valorizzato.
+     * Il campo {@code passwordHash} deve essere già calcolato dall’esterno
+     * (ad esempio tramite SHA-256) prima dell’inserimento.
+     * </p>
+     *
+     * @param u utente da inserire
+     * @throws IllegalArgumentException se {@code u} è nullo o se {@code userid} è nullo/vuoto
      */
     public void add(User u) {
         if (u == null) throw new IllegalArgumentException("User null");
@@ -105,10 +186,23 @@ public class UtentiRepository {
         }
     }
 
+    /**
+     * Aggiorna l’indirizzo email di un utente.
+     *
+     * <p>
+     * Esegue un aggiornamento puntuale della colonna {@code email} per l’utente
+     * identificato da {@code userid}. Il metodo restituisce {@code true} solo se viene
+     * aggiornata esattamente una riga.
+     * </p>
+     *
+     * @param userid identificativo dell’utente
+     * @param newEmail nuovo indirizzo email
+     * @return true se l’aggiornamento ha modificato una sola riga, false altrimenti
+     */
     public boolean updateEmail(String userid, String newEmail) {
         String sql = "UPDATE br.utenti_registrati SET email=? WHERE userid=?";
         try (Connection c = db.getConnection();
-            PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, newEmail);
             ps.setString(2, userid);
@@ -120,8 +214,16 @@ public class UtentiRepository {
     }
 
     /**
-     * Elimina definitivamente l'account e tutti i dati collegati dell'utente.
-     * Ordine di cancellazione pensato per evitare vincoli FK.
+     * Elimina definitivamente un account e i dati collegati dell’utente.
+     *
+     * <p>
+     * L’operazione è eseguita in transazione e applica un ordine di cancellazione
+     * progettato per ridurre il rischio di violazioni di vincoli di integrità
+     * referenziale. Se {@code userid} è nullo o vuoto, il metodo restituisce {@code false}.
+     * </p>
+     *
+     * @param userid identificativo dell’utente
+     * @return true se l’utente è stato eliminato (una riga rimossa), false altrimenti
      */
     public boolean deleteAccountCascade(String userid) {
         if (userid == null || userid.isBlank()) return false;
@@ -170,6 +272,4 @@ public class UtentiRepository {
             throw new RuntimeException("Errore DB deleteAccountCascade: " + e.getMessage(), e);
         }
     }
-
-
 }

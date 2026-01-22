@@ -8,19 +8,60 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Repository JDBC per ValutazioniLibri.
+ * Repository JDBC per la gestione delle valutazioni dei libri.
+ *
+ * <p>
+ * La classe fornisce operazioni di accesso ai dati per la tabella delle valutazioni,
+ * consentendo il recupero delle recensioni per libro o per utente, l’inserimento/aggiornamento
+ * atomico tramite upsert e la cancellazione puntuale di una valutazione identificata dalla
+ * chiave composta (userid, libro_id).
+ * </p>
+ *
+ * <ul>
+ *   <li>Recupero delle valutazioni associate a un libro</li>
+ *   <li>Recupero delle valutazioni inserite da un utente</li>
+ *   <li>Inserimento o aggiornamento della valutazione per chiave composta</li>
+ *   <li>Cancellazione di una valutazione specifica</li>
+ * </ul>
+ *
+ * @author Matteo Ferrario
+ * @version 1.0
+ * @see bookrecommender.db.Db
+ * @see bookrecommender.model.Review
  */
+@SuppressWarnings("ClassCanBeRecord")
 public class ValutazioniRepository {
 
     private final Db db;
 
+    /**
+     * Costruisce il repository inizializzandolo con l’oggetto di accesso al database.
+     *
+     * <p>
+     * L’istanza {@link Db} viene utilizzata per ottenere le connessioni JDBC
+     * necessarie all’esecuzione delle operazioni sulle valutazioni.
+     * </p>
+     *
+     * @param db oggetto di accesso al database
+     */
     public ValutazioniRepository(Db db) {
         this.db = db;
     }
 
+    /**
+     * Recupera tutte le valutazioni associate a un determinato libro.
+     *
+     * <p>
+     * Esegue una query di selezione filtrata per {@code libro_id} e costruisce
+     * una lista di {@link Review} a partire dalle righe restituite.
+     * </p>
+     *
+     * @param bookId identificativo del libro
+     * @return lista delle valutazioni del libro indicato
+     */
     public List<Review> findByBookId(int bookId) {
         String sql = """
-            SELECT userid, libro_id, stile, contenuto, gradevolezza, originalita, edizione, voto_finale, commento
+            SELECT userid, libro_id, stile, contenuto, gradevolezza, originalità, edizione, voto_finale, commento
             FROM br.valutazioni_libri
             WHERE libro_id = ?
             """;
@@ -39,7 +80,7 @@ public class ValutazioniRepository {
                             rs.getInt("stile"),
                             rs.getInt("contenuto"),
                             rs.getInt("gradevolezza"),
-                            rs.getInt("originalita"),
+                            rs.getInt("originalità"),
                             rs.getInt("edizione"),
                             rs.getInt("voto_finale"),
                             rs.getString("commento")
@@ -54,20 +95,29 @@ public class ValutazioniRepository {
     }
 
     /**
-     * Salva o aggiorna la valutazione (PK: userid+libro_id).
+     * Inserisce o aggiorna una valutazione identificata da chiave composta (userid, libro_id).
+     *
+     * <p>
+     * Esegue un’operazione di upsert: se la valutazione non esiste viene inserita,
+     * altrimenti viene aggiornata sostituendo i valori dei campi di punteggio e commento
+     * con quelli forniti. L’oggetto {@link Review} deve essere non nullo.
+     * </p>
+     *
+     * @param r valutazione da inserire o aggiornare
+     * @throws IllegalArgumentException se {@code r} è nullo
      */
     public void upsert(Review r) {
         if (r == null) throw new IllegalArgumentException("Review null");
 
         String sql = """
             INSERT INTO br.valutazioni_libri
-              (userid, libro_id, stile, contenuto, gradevolezza, originalita, edizione, voto_finale, commento)
+              (userid, libro_id, stile, contenuto, gradevolezza, originalità, edizione, voto_finale, commento)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (userid, libro_id) DO UPDATE
             SET stile = EXCLUDED.stile,
                 contenuto = EXCLUDED.contenuto,
                 gradevolezza = EXCLUDED.gradevolezza,
-                originalita = EXCLUDED.originalita,
+                originalità = EXCLUDED.originalità,
                 edizione = EXCLUDED.edizione,
                 voto_finale = EXCLUDED.voto_finale,
                 commento = EXCLUDED.commento
@@ -93,9 +143,20 @@ public class ValutazioniRepository {
         }
     }
 
+    /**
+     * Recupera tutte le valutazioni inserite da un determinato utente.
+     *
+     * <p>
+     * Esegue una query filtrata per {@code userid} e restituisce le valutazioni
+     * ordinate per identificativo del libro.
+     * </p>
+     *
+     * @param userid identificativo dell’utente
+     * @return lista delle valutazioni dell’utente ordinate per libro
+     */
     public List<Review> findByUserId(String userid) {
         String sql = """
-            SELECT userid, libro_id, stile, contenuto, gradevolezza, originalita, edizione, voto_finale, commento
+            SELECT userid, libro_id, stile, contenuto, gradevolezza, originalità, edizione, voto_finale, commento
             FROM br.valutazioni_libri
             WHERE userid = ?
             ORDER BY libro_id
@@ -104,7 +165,7 @@ public class ValutazioniRepository {
         List<Review> out = new ArrayList<>();
 
         try (Connection c = db.getConnection();
-            PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, userid);
 
@@ -116,7 +177,7 @@ public class ValutazioniRepository {
                             rs.getInt("stile"),
                             rs.getInt("contenuto"),
                             rs.getInt("gradevolezza"),
-                            rs.getInt("originalita"),
+                            rs.getInt("originalità"),
                             rs.getInt("edizione"),
                             rs.getInt("voto_finale"),
                             rs.getString("commento")
@@ -132,10 +193,22 @@ public class ValutazioniRepository {
         return out;
     }
 
+    /**
+     * Elimina una valutazione identificata da utente e libro.
+     *
+     * <p>
+     * Esegue una cancellazione puntuale sulla tabella delle valutazioni.
+     * Il metodo restituisce {@code true} solo se viene eliminata esattamente una riga.
+     * </p>
+     *
+     * @param userid identificativo dell’utente
+     * @param libroId identificativo del libro
+     * @return true se la valutazione è stata eliminata, false altrimenti
+     */
     public boolean delete(String userid, int libroId) {
         String sql = "DELETE FROM br.valutazioni_libri WHERE userid = ? AND libro_id = ?";
         try (Connection c = db.getConnection();
-            PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, userid);
             ps.setInt(2, libroId);
@@ -145,6 +218,4 @@ public class ValutazioniRepository {
             throw new RuntimeException("Errore DB delete review: " + e.getMessage(), e);
         }
     }
-
-
 }

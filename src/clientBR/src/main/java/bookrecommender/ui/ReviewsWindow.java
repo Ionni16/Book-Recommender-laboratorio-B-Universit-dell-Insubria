@@ -5,6 +5,10 @@ import bookrecommender.model.Review;
 import bookrecommender.repo.LibriRepository;
 import bookrecommender.service.AuthService;
 import bookrecommender.service.ReviewService;
+import bookrecommender.net.BRProxy;
+import bookrecommender.net.Request;
+import bookrecommender.net.Response;
+
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,9 +19,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import bookrecommender.net.BRProxy;
-import bookrecommender.net.Request;
-import bookrecommender.net.Response;
+
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
@@ -40,7 +42,7 @@ import java.util.stream.Collectors;
  * {@link LibriRepository}, mentre i dati delle valutazioni sono gestiti
  * dal {@link ReviewService}.
  *
- * @author Matteo Ferrario
+ * @author Ionut Puiu
  * @version 2.0
  * @see bookrecommender.service.ReviewService
  * @see bookrecommender.service.AuthService

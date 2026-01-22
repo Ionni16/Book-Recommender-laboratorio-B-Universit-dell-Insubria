@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  * {@link LibraryService} e dal {@link LibriRepository} per risolvere i
  * dettagli dei libri a partire dagli identificatori.
  *
- * @author Matteo Ferrario
+ * @author Ionut Puiu
  * @version 2.0
  * @see bookrecommender.service.LibraryService
  * @see bookrecommender.service.AuthService

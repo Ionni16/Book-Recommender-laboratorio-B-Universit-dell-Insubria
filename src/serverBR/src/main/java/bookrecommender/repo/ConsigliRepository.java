@@ -11,19 +11,58 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Repository JDBC per ConsigliLibri.
+ * Repository JDBC per la gestione dei suggerimenti di libri.
+ *
+ * <p>
+ * La classe fornisce metodi di accesso ai dati per la tabella dei suggerimenti,
+ * eseguendo operazioni JDBC con gestione transazionale quando necessario e
+ * restituendo i risultati sotto forma di oggetti {@link Suggestion}.
+ * È applicato un vincolo applicativo di massimo tre suggerimenti per
+ * ciascuna coppia (utente, libro).
+ * </p>
+ *
+ * <ul>
+ *   <li>Recupero dei suggerimenti per libro con aggregazione per utente</li>
+ *   <li>Recupero dei suggerimenti per utente con raggruppamento per libro</li>
+ *   <li>Inserimento, sostituzione e cancellazione dei suggerimenti</li>
+ * </ul>
+ *
+ * @author Matteo Ferrario
+ * @version 2.0
+ * @see bookrecommender.db.Db
+ * @see bookrecommender.model.Suggestion
  */
+@SuppressWarnings("ClassCanBeRecord")
 public class ConsigliRepository {
 
     private final Db db;
 
+    /**
+     * Costruisce il repository inizializzandolo con l’oggetto di accesso al database.
+     *
+     * <p>
+     * L’istanza {@link Db} viene utilizzata per ottenere le connessioni JDBC
+     * necessarie all’esecuzione delle operazioni sui suggerimenti.
+     * </p>
+     *
+     * @param db oggetto di accesso al database
+     */
     public ConsigliRepository(Db db) {
         this.db = db;
     }
 
     /**
-     * Serve per l'aggregazione: restituisce TUTTI i suggerimenti per un bookId,
-     * raggruppati per utente (Suggestion = userid + bookId + lista suggeriti).
+     * Recupera tutti i suggerimenti associati a un determinato libro,
+     * aggregandoli per utente.
+     *
+     * <p>
+     * Per ciascun utente viene restituito un oggetto {@link Suggestion}
+     * contenente l’identificativo dell’utente, del libro e la lista
+     * dei libri suggeriti ordinati.
+     * </p>
+     *
+     * @param bookId identificativo del libro
+     * @return lista di suggerimenti aggregati per utente
      */
     public List<Suggestion> findByBookId(int bookId) {
         String sql = """
@@ -64,76 +103,14 @@ public class ConsigliRepository {
         }
     }
 
+
     /**
-     * Inserisce un singolo suggerimento (userid, bookId -> suggestedId) rispettando MAX 3.
-     * Ritorna true se inserito, false se già presente o se superi max 3.
+     * Recupera tutti i suggerimenti inseriti da un utente,
+     * raggruppandoli per libro.
+     *
+     * @param userid identificativo dell’utente
+     * @return lista di suggerimenti raggruppati per libro
      */
-    public boolean addSuggestionMax3(String userid, int bookId, int suggestedId) {
-        String countSql = """
-            SELECT COUNT(*)
-            FROM br.consigli_libri
-            WHERE userid = ? AND libro_id = ?
-            FOR UPDATE
-            """;
-
-        String insSql = """
-            INSERT INTO br.consigli_libri(userid, libro_id, suggerito_id)
-            VALUES (?, ?, ?)
-            ON CONFLICT DO NOTHING
-            """;
-
-        try (Connection c = db.getConnection()) {
-            c.setAutoCommit(false);
-
-            int count;
-            try (PreparedStatement ps = c.prepareStatement(countSql)) {
-                ps.setString(1, userid);
-                ps.setInt(2, bookId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    rs.next();
-                    count = rs.getInt(1);
-                }
-            }
-
-            if (count >= 3) {
-                c.rollback();
-                return false;
-            }
-
-            int rows;
-            try (PreparedStatement ps = c.prepareStatement(insSql)) {
-                ps.setString(1, userid);
-                ps.setInt(2, bookId);
-                ps.setInt(3, suggestedId);
-                rows = ps.executeUpdate();
-            }
-
-            c.commit();
-            return rows > 0;
-
-        } catch (SQLException e) {
-            throw new RuntimeException("Errore DB addSuggestionMax3: " + e.getMessage(), e);
-        }
-    }
-
-    public void removeSuggestion(String userid, int bookId, int suggestedId) {
-        String sql = """
-            DELETE FROM br.consigli_libri
-            WHERE userid = ? AND libro_id = ? AND suggerito_id = ?
-            """;
-        try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-
-            ps.setString(1, userid);
-            ps.setInt(2, bookId);
-            ps.setInt(3, suggestedId);
-            ps.executeUpdate();
-
-        } catch (SQLException e) {
-            throw new RuntimeException("Errore DB removeSuggestion: " + e.getMessage(), e);
-        }
-    }
-
     public List<Suggestion> findByUserId(String userid) {
         String sql = """
             SELECT userid, libro_id, suggerito_id
@@ -145,7 +122,7 @@ public class ConsigliRepository {
         Map<Integer, List<Integer>> map = new LinkedHashMap<>();
 
         try (Connection c = db.getConnection();
-            PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, userid);
 
@@ -168,11 +145,19 @@ public class ConsigliRepository {
         return out;
     }
 
+    /**
+     * Sostituisce completamente i suggerimenti per una coppia (utente, libro),
+     * applicando il limite massimo di tre elementi.
+     *
+     * @param userid identificativo dell’utente
+     * @param bookId identificativo del libro
+     * @param suggestedIds lista dei libri suggeriti
+     * @return true se l’operazione è completata correttamente
+     */
     public boolean replaceSuggestionsMax3(String userid, int bookId, List<Integer> suggestedIds) {
         if (userid == null || userid.isBlank()) throw new IllegalArgumentException("userid vuoto");
         if (suggestedIds == null) suggestedIds = List.of();
 
-        // max 3
         List<Integer> ids = suggestedIds.stream()
                 .filter(Objects::nonNull)
                 .distinct()
@@ -209,10 +194,16 @@ public class ConsigliRepository {
         }
     }
 
+    /**
+     * Elimina tutti i suggerimenti associati a una coppia (utente, libro).
+     *
+     * @param userid identificativo dell’utente
+     * @param bookId identificativo del libro
+     */
     public void deleteAllForUserBook(String userid, int bookId) {
         String sql = "DELETE FROM br.consigli_libri WHERE userid=? AND libro_id=?";
         try (Connection c = db.getConnection();
-            PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, userid);
             ps.setInt(2, bookId);
@@ -222,6 +213,4 @@ public class ConsigliRepository {
             throw new RuntimeException("Errore DB deleteAllForUserBook: " + e.getMessage(), e);
         }
     }
-
-
 }

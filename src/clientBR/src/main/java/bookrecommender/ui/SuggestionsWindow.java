@@ -2,12 +2,13 @@ package bookrecommender.ui;
 
 import bookrecommender.model.Book;
 import bookrecommender.model.Suggestion;
-import bookrecommender.net.BRProxy;
 import bookrecommender.net.Request;
 import bookrecommender.net.Response;
 import bookrecommender.repo.LibriRepository;
 import bookrecommender.service.AuthService;
 import bookrecommender.service.SuggestionService;
+import bookrecommender.net.BRProxy;
+
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -43,7 +44,7 @@ import java.util.stream.Collectors;
  *   <li>Chiamata remota al server (<code>GET_BOOK_BY_ID</code>).</li>
  * </ol>
  *
- * @author Richard zefi
+ * @author Ionut Puiu
  * @version 1.0
  * @see SuggestionService
  * @see AuthService

@@ -5,6 +5,10 @@ import bookrecommender.model.Library;
 import bookrecommender.repo.LibriRepository;
 import bookrecommender.service.AuthService;
 import bookrecommender.service.LibraryService;
+import bookrecommender.net.BRProxy;
+import bookrecommender.net.Request;
+import bookrecommender.net.Response;
+
 
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -22,7 +26,7 @@ import javafx.stage.Stage;
 
 import java.net.URL;
 import java.util.*;
-import java.util.stream.Collectors;
+
 
 /**
  * Finestra di gestione delle librerie personali dell'utente.
@@ -53,6 +57,7 @@ public class LibrariesWindow extends Stage {
 
     private final ObservableList<Library> libsData = FXCollections.observableArrayList();
     private final ObservableList<Book> booksData = FXCollections.observableArrayList();
+    private final BRProxy proxy = new BRProxy("127.0.0.1", 5050);
 
     private TableView<Library> tblLibs;
     private TableView<Book> tblBooks;
@@ -104,7 +109,7 @@ public class LibrariesWindow extends Stage {
 
 
     /**
-     * Costruisce l'header grafico della finestra, con titolo dinamico e sottotitolo descrittivo.
+     * Costruisce l' header grafico della finestra, con titolo dinamico e sottotitolo descrittivo.
      *
      * @return nodo JavaFX per la sezione header
      * @see #loadLibraries()
@@ -255,8 +260,29 @@ public class LibrariesWindow extends Stage {
 
         try {
             List<Library> libs = libraryService.listUserLibraries(user);
+
+            String selectedName = null;
+            Library selected = tblLibs.getSelectionModel().getSelectedItem();
+            if (selected != null) selectedName = selected.getNome();
+
             libsData.setAll(libs);
-            if (!libs.isEmpty()) tblLibs.getSelectionModel().select(0);
+
+            if (libs.isEmpty()) {
+                booksData.clear();
+                return;
+            }
+
+            if (selectedName != null) {
+                for (Library l : libs) {
+                    if (selectedName.equals(l.getNome())) {
+                        tblLibs.getSelectionModel().select(l);
+                        return;
+                    }
+                }
+            }
+
+            tblLibs.getSelectionModel().select(0);
+
         } catch (Exception e) {
             FxUtil.error(this, "Errore", "Errore nel caricamento delle librerie:\n" + e.getMessage());
         }
@@ -272,14 +298,35 @@ public class LibrariesWindow extends Stage {
      * @param lib libreria selezionata
      * @see LibriRepository#findById(Integer)
      */
+    @SuppressWarnings("unchecked")
     private void loadBooksOf(Library lib) {
         booksData.clear();
         if (lib == null) return;
 
-        List<Book> bs = lib.getBookIds().stream()
-                .map(libriRepo::findById)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        List<Book> bs = new ArrayList<>();
+        for (Integer id : lib.getBookIds()) {
+            if (id == null) continue;
+
+            try {
+                Book b = libriRepo.findById(id);
+
+                // cache miss -> prendo dal server
+                if (b == null) {
+                    Response res = proxy.call(Request.getBookById(id));
+                    if (!res.ok) {
+                        throw new RuntimeException(res.error);
+                    }
+                    b = (Book) res.data;
+                    if (b != null) libriRepo.put(b); // cache locale
+                }
+
+                if (b != null) bs.add(b);
+
+            } catch (Exception e) {
+                FxUtil.error(this, "Errore",
+                        "Impossibile caricare i dettagli del libro (ID " + id + "):\n" + e.getMessage());
+            }
+        }
 
         booksData.setAll(bs);
     }
@@ -334,33 +381,47 @@ public class LibrariesWindow extends Stage {
      * </p>
      *
      * @see LibraryService#saveLibrary(Library)
-     * @see #checkLibrary()
      * @see #loadLibraries()
      */
     private void renameLibrary() {
         Library sel = tblLibs.getSelectionModel().getSelectedItem();
         if (sel == null) return;
 
-        TextInputDialog d = new TextInputDialog(sel.getNome());
+        final String userid = sel.getUserid();
+        final String oldName = sel.getNome();
+
+        TextInputDialog d = new TextInputDialog(oldName);
         d.initOwner(this);
         d.setTitle("Rinomina libreria");
         d.setHeaderText(null);
-        d.setContentText("Nuovo nome (min 5 caratteri):");
+        d.setContentText("Nuovo nome: ");
+
+        d.showAndWait().ifPresent(input -> {
+            String newName = input.trim();
+
+            if (newName.equals(oldName)) {
+                FxUtil.info(this, "Nessuna modifica", "Il nome è identico: nessuna modifica salvata.");
+                return;
+            }
+
+            try {
+                boolean ok = libraryService.renameLibrary(userid, oldName, newName);
+
+                loadLibraries();
+                for (Library l : libsData) {
+                    if (userid.equals(l.getUserid()) && newName.equals(l.getNome())) {
+                        tblLibs.getSelectionModel().select(l); // trigger -> loadBooksOf(...)
+                        return;
+                    }
+                }
 
 
-        if (checkLibrary().equals(sel.getNome())) {
-            FxUtil.info(this, "Nessuna modifica", "Il nome è identico: nessuna modifica salvata.");
-            return;
-        }
+                if (!ok) throw new IllegalStateException("Rinomina fallita.");
 
-        try {
-            Library updated = new Library(sel.getUserid(), checkLibrary(), sel.getBookIds());
-            boolean ok = libraryService.saveLibrary(updated);
-            if (!ok) throw new IllegalStateException("Salvataggio fallito.");
-            loadLibraries();
-        } catch (Exception e) {
-            FxUtil.error(this, "Errore", e.getMessage());
-        }
+            } catch (Exception e) {
+                FxUtil.error(this, "Errore", e.getMessage());
+            }
+        });
     }
 
 
@@ -441,29 +502,4 @@ public class LibrariesWindow extends Stage {
     }
 
 
-    /**
-     * Mostra un dialog di input per ottenere un nome libreria e applica una validazione minima.
-     * <p>
-     * Ritorna la stringa inserita (trim) oppure stringa vuota se l'utente annulla.
-     * In caso di lunghezza insufficiente mostra un errore.
-     * </p>
-     *
-     * @return nome libreria inserito (trim) o stringa vuota
-     * @see TextInputDialog
-     */
-    private String checkLibrary(){
-        TextInputDialog d = new TextInputDialog();
-        d.initOwner(this);
-        d.setTitle("Nuova libreria");
-        d.setHeaderText(null);
-        d.setContentText("Nome libreria (min 5 caratteri):");
-        Optional<String> r = d.showAndWait();
-        String name = "";
-
-        if (r.isPresent()) name = r.get().trim();
-        if (name.length() < 6) {
-            FxUtil.error(this, "Nome non valido", "Il nome deve avere almeno 5 caratteri.");
-        }
-        return name;
-    }
 }

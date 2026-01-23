@@ -10,9 +10,9 @@ STRUTTURA DEL PROGETTO
 
 - src/
   Contiene i sorgenti Maven multi-modulo:
-  - common     : classi condivise (model, DTO, networking)
-  - serverBR   : server e accesso al database
-  - clientBR   : client con interfaccia grafica JavaFX
+  - common : classi condivise (model, DTO, networking)
+  - serverBR : server e accesso al database
+  - clientBR : client con interfaccia grafica JavaFX
 
 - bin/
   Contiene i file JAR eseguibili:

@@ -924,7 +924,7 @@ public class BookRecommenderFX extends Application {
                         starsRow("Stile", rs.mediaStile),
                         starsRow("Contenuto", rs.mediaContenuto),
                         starsRow("Gradevolezza", rs.mediaGradevolezza),
-                        starsRow("Originalità", rs.mediaOriginalita),
+                        starsRow("Originalita", rs.mediaOriginalita),
                         starsRow("Edizione", rs.mediaEdizione)
                 );
             }
@@ -1812,7 +1812,8 @@ public class BookRecommenderFX extends Application {
         grid.add(label("Email"), 0, r); grid.add(email, 1, r++);
         grid.add(label("Username"), 0, r); grid.add(username, 1, r++);
         grid.add(label("Password"), 0, r); grid.add(pw.getNode(), 1, r++);
-        grid.add(label("Ripeti password"), 0, r); grid.add(pw2.getNode(), 1, r++);
+        grid.add(label("Ripeti password"), 0, r); //noinspection UnusedAssignment
+        grid.add(pw2.getNode(), 1, r++);
 
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setMinWidth(160);

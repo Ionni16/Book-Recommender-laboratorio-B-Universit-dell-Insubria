@@ -89,4 +89,21 @@ public class LibraryService {
         if (!res.ok) return false;
         return Boolean.TRUE.equals(res.data) || res.data == null;
     }
+
+
+    /**
+     * Rinomina una libreria esistente dell'utente.
+     *
+     * @param userid  utente proprietario
+     * @param oldName nome attuale libreria
+     * @param newName nuovo nome libreria
+     * @return {@code true} se la rinomina è andata a buon fine
+     * @throws RuntimeException se il server risponde con errore o la connessione fallisce
+     */
+    public boolean renameLibrary(String userid, String oldName, String newName) {
+        Response res = proxy.call(Request.renameLibrary(userid, oldName, newName));
+        if (!res.ok) throw new RuntimeException(res.error);
+        return (Boolean) res.data;
+    }
+
 }

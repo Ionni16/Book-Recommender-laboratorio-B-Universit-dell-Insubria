@@ -214,4 +214,78 @@ public class LibrerieRepository {
             throw new RuntimeException("Errore DB userHasBook: " + e.getMessage(), e);
         }
     }
+
+
+    /**
+     * Rinomina una libreria esistente dell'utente.
+     * <p>
+     * La chiave logica della libreria è (userid, nome). La rinomina aggiorna anche
+     * la tabella ponte librerie_libri per mantenere coerenti le associazioni.
+     * </p>
+     *
+     * @param userid  proprietario
+     * @param oldName nome attuale libreria
+     * @param newName nuovo nome libreria
+     * @return true se è stata rinominata una libreria, false se non trovata
+     * @throws SQLException in caso di errore DB
+     */
+    public boolean renameLibrary(String userid, String oldName, String newName) throws SQLException {
+        userid = userid == null ? "" : userid.trim();
+        oldName = oldName == null ? "" : oldName.trim();
+        newName = newName == null ? "" : newName.trim();
+
+        System.out.println("[RENAME_LIBRARY] userid=" + userid
+                + " oldName='" + oldName + "' newName='" + newName + "'");
+
+        String existsSql = "SELECT 1 FROM br.librerie WHERE userid=? AND nome=? LIMIT 1";
+        String updLibSql = "UPDATE br.librerie SET nome=? WHERE userid=? AND TRIM(nome)=TRIM(?)";
+        String updJoinSql = "UPDATE br.librerie_libri SET nome=? WHERE userid=? AND TRIM(nome)=TRIM(?)";
+
+        try (Connection conn = db.getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement psExists = conn.prepareStatement(existsSql);
+                 PreparedStatement psUpdLib = conn.prepareStatement(updLibSql);
+                 PreparedStatement psUpdJoin = conn.prepareStatement(updJoinSql)) {
+
+                // blocca rename su nome già esistente (stesso userid)
+                psExists.setString(1, userid);
+                psExists.setString(2, newName);
+                try (ResultSet rs = psExists.executeQuery()) {
+                    if (rs.next()) {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+
+                // update tabella librerie
+                psUpdLib.setString(1, newName);
+                psUpdLib.setString(2, userid);
+                psUpdLib.setString(3, oldName);
+                int updatedLib = psUpdLib.executeUpdate();
+
+                psUpdJoin.setString(1, newName);
+                psUpdJoin.setString(2, userid);
+                psUpdJoin.setString(3, oldName);
+                int updatedJoin = psUpdJoin.executeUpdate();
+
+                System.out.println("### RENAME_LIBRARY v2 ### updatedLib=" + updatedLib + " updatedJoin=" + updatedJoin);
+
+
+
+                boolean ok = (updatedLib == 1) && (updatedJoin >= 0);
+
+                conn.commit();
+                return ok;
+
+
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
 }

@@ -12,6 +12,7 @@
     <module>src/clientBR</module>
     <module>src/serverBR</module>
     <module>src/common</module>
+    <module>DBCreator</module>
   </modules>
 
 

@@ -61,7 +61,7 @@ public class ValutazioniRepository {
      */
     public List<Review> findByBookId(int bookId) {
         String sql = """
-            SELECT userid, libro_id, stile, contenuto, gradevolezza, originalità, edizione, voto_finale, commento
+            SELECT userid, libro_id, stile, contenuto, gradevolezza, originalita, edizione, voto_finale, commento
             FROM br.valutazioni_libri
             WHERE libro_id = ?
             """;
@@ -80,7 +80,7 @@ public class ValutazioniRepository {
                             rs.getInt("stile"),
                             rs.getInt("contenuto"),
                             rs.getInt("gradevolezza"),
-                            rs.getInt("originalità"),
+                            rs.getInt("originalita"),
                             rs.getInt("edizione"),
                             rs.getInt("voto_finale"),
                             rs.getString("commento")
@@ -111,13 +111,13 @@ public class ValutazioniRepository {
 
         String sql = """
             INSERT INTO br.valutazioni_libri
-              (userid, libro_id, stile, contenuto, gradevolezza, originalità, edizione, voto_finale, commento)
+              (userid, libro_id, stile, contenuto, gradevolezza, originalita, edizione, voto_finale, commento)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (userid, libro_id) DO UPDATE
             SET stile = EXCLUDED.stile,
                 contenuto = EXCLUDED.contenuto,
                 gradevolezza = EXCLUDED.gradevolezza,
-                originalità = EXCLUDED.originalità,
+                originalita = EXCLUDED.originalita,
                 edizione = EXCLUDED.edizione,
                 voto_finale = EXCLUDED.voto_finale,
                 commento = EXCLUDED.commento
@@ -156,7 +156,7 @@ public class ValutazioniRepository {
      */
     public List<Review> findByUserId(String userid) {
         String sql = """
-            SELECT userid, libro_id, stile, contenuto, gradevolezza, originalità, edizione, voto_finale, commento
+            SELECT userid, libro_id, stile, contenuto, gradevolezza, originalitaF, edizione, voto_finale, commento
             FROM br.valutazioni_libri
             WHERE userid = ?
             ORDER BY libro_id
@@ -177,7 +177,7 @@ public class ValutazioniRepository {
                             rs.getInt("stile"),
                             rs.getInt("contenuto"),
                             rs.getInt("gradevolezza"),
-                            rs.getInt("originalità"),
+                            rs.getInt("originalita"),
                             rs.getInt("edizione"),
                             rs.getInt("voto_finale"),
                             rs.getString("commento")

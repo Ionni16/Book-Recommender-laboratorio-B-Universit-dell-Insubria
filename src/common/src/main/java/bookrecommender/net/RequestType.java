@@ -215,5 +215,14 @@ public enum RequestType {
      * Il payload contiene un array <code>Object[]</code> con userid e nome libreria.
      * </p>
      */
-    DELETE_LIBRARY
+    DELETE_LIBRARY,
+
+    /**
+     * Rinomina una libreria esistente.
+     * <p>
+     * Il payload contiene un array <code>Object[]</code> con: userid, nome attuale della libreria
+     * e nuovo nome della libreria
+     * </p>
+     */
+    RENAME_LIBRARY
 }

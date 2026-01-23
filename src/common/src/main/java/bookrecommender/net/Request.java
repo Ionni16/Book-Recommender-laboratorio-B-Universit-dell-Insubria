@@ -227,6 +227,18 @@ public class Request implements Serializable {
     }
 
 
+    /**
+     * Crea una richiesta per rinominare una libreria.
+     *
+     * @param userid  identificativo utente proprietario
+     * @param oldName nome attuale libreria
+     * @param newName nuovo nome libreria
+     * @return richiesta di tipo {@link RequestType#RENAME_LIBRARY}
+     */
+    public static Request renameLibrary(String userid, String oldName, String newName) {
+        return new Request(RequestType.RENAME_LIBRARY, new Object[]{userid, oldName, newName}, null);
+    }
+
 
 
     /**

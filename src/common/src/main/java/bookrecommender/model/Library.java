@@ -1,6 +1,5 @@
 package bookrecommender.model;
 
-import java.io.Serial;
 import java.io.Serializable;
 import java.util.LinkedHashSet;
 import java.util.Objects;
@@ -19,10 +18,10 @@ import java.util.Set;
  * @see bookrecommender.model.User
  * @see bookrecommender.model.Book
  */
+@SuppressWarnings("ClassCanBeRecord")
 public class Library implements Serializable {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+
 
     // --------------- ATTRIBUTI ---------------
     private final String userid;

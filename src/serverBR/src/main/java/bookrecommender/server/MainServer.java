@@ -45,9 +45,9 @@ import java.util.Scanner;
  *
  * @author Richard Zefi
  * @version 1.0
- * @see java.net.ServerSocket
- * @see bookrecommender.net.Request
- * @see bookrecommender.net.Response
+ * @see ServerSocket
+ * @see Request
+ * @see Response
  */
 public class MainServer {
 
@@ -386,6 +386,15 @@ public class MainServer {
                     yield ok ? Response.ok(true) : Response.fail("Cambio password fallito");
                 }
 
+                case RENAME_LIBRARY -> {
+                    Object[] a = (Object[]) req.payload;
+                    String userid = (String) a[0];
+                    String oldName = (String) a[1];
+                    String newName = (String) a[2];
+
+                    boolean ok = librerieRepo.renameLibrary(userid, oldName, newName);
+                    yield Response.ok(ok);
+                }
             };
 
             out.writeObject(resp);

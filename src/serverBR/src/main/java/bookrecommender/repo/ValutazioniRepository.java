@@ -156,7 +156,7 @@ public class ValutazioniRepository {
      */
     public List<Review> findByUserId(String userid) {
         String sql = """
-            SELECT userid, libro_id, stile, contenuto, gradevolezza, originalitaF, edizione, voto_finale, commento
+            SELECT userid, libro_id, stile, contenuto, gradevolezza, originalita, edizione, voto_finale, commento
             FROM br.valutazioni_libri
             WHERE userid = ?
             ORDER BY libro_id

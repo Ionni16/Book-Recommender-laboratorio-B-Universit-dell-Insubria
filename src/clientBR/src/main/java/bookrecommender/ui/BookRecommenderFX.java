@@ -1245,11 +1245,11 @@ public class BookRecommenderFX extends Application {
         grid.setVgap(10);
 
         int r = 0;
-        grid.add(label("Stile (1-5)"), 0, r); grid.add(sStile, 1, r);
-        grid.add(label("Contenuto (1-5)"), 0, r); grid.add(sCont, 1, r);
-        grid.add(label("Gradevolezza (1-5)"), 0, r); grid.add(sGrad, 1, r);
-        grid.add(label("Originalità (1-5)"), 0, r); grid.add(sOrig, 1, r);
-        grid.add(label("Edizione (1-5)"), 0, r); grid.add(sEdiz, 1, r);
+        grid.add(label("Stile (1-5)"), 0, r); grid.add(sStile, 1, r++);
+        grid.add(label("Contenuto (1-5)"), 0, r); grid.add(sCont, 1, r++);
+        grid.add(label("Gradevolezza (1-5)"), 0, r); grid.add(sGrad, 1, r++);
+        grid.add(label("Originalità (1-5)"), 0, r); grid.add(sOrig, 1, r++);
+        grid.add(label("Edizione (1-5)"), 0, r); grid.add(sEdiz, 1, r++);
 
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setMinWidth(170);

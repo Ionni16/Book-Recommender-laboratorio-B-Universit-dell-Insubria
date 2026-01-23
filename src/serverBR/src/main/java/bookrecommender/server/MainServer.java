@@ -401,8 +401,16 @@ public class MainServer {
             out.flush();
 
         } catch (Exception e) {
-            System.err.println(e.getMessage());
+            e.printStackTrace(); // <-- FILE + RIGA REALI
 
+            try {
+                ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+                out.writeObject(Response.fail(
+                        e.getClass().getSimpleName() + ": " +
+                                (e.getMessage() != null ? e.getMessage() : "no message")
+                ));
+                out.flush();
+            } catch (Exception ignored) {}
         }
     }
 }

@@ -269,10 +269,6 @@ public class LibrerieRepository {
                 psUpdJoin.setString(3, oldName);
                 int updatedJoin = psUpdJoin.executeUpdate();
 
-                System.out.println("### RENAME_LIBRARY v2 ### updatedLib=" + updatedLib + " updatedJoin=" + updatedJoin);
-
-
-
                 boolean ok = (updatedLib == 1) && (updatedJoin >= 0);
 
                 conn.commit();

@@ -121,7 +121,7 @@ br_password
 
 Queste credenziali sono utilizzate esclusivamente per la connessione al database PostgreSQL e non influiscono sulla logica applicativa del client.
 
-````
+```
 
 ---
 
@@ -131,7 +131,7 @@ Queste credenziali sono utilizzate esclusivamente per la connessione al database
 
 ```bash
 mvn -pl src/serverBR exec:java
-````
+```
 
 Server disponibile su:
 

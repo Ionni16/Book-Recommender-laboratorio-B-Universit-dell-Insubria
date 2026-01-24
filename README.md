@@ -1,6 +1,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-<img src="Docs/logoInsubria.svg" width="250" alt="Universita Logo">
+<p align="center">
+  <img src="Docs/logoInsubria.svg" width="250" alt="Universita Logo">
+</p>
 
 # 📚 Book Recommender
 

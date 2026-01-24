@@ -51,6 +51,7 @@ import java.util.Scanner;
  */
 public class MainServer {
 
+
     /**
      * Avvia il server: acquisisce i parametri del database, inizializza repository/servizi
      * e apre la socket di ascolto sulla porta configurata.
@@ -202,13 +203,13 @@ public class MainServer {
                    ======================= */
                 case SEARCH_BY_TITLE -> {
                     String titolo = (String) req.payload;
-                    List<Book> result = searchService.cercaLibroPerTitolo(titolo, 50);
+                    List<Book> result = searchService.cercaLibroPerTitolo(titolo, 5000);
                     yield Response.ok(result);
                 }
 
                 case SEARCH_BY_AUTHOR -> {
                     String autore = (String) req.payload;
-                    List<Book> result = searchService.cercaLibroPerAutore(autore, 50);
+                    List<Book> result = searchService.cercaLibroPerAutore(autore, 5000);
                     yield Response.ok(result);
                 }
 

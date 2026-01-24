@@ -412,6 +412,7 @@ public class BookRecommenderFX extends Application {
             data.clear();
             bookCache.clear();
             clearDetail();
+            loadInitialResults();
             lblStatus.setText("Campi resettati");
         });
 
@@ -1957,7 +1958,6 @@ public class BookRecommenderFX extends Application {
      */
     private void loadInitialResults() {
         try {
-            int limit = spLimit.getValue();
 
             // parola comune per avere risultati subito
             String seed = "the";
@@ -1969,8 +1969,6 @@ public class BookRecommenderFX extends Application {
             List<Book> res = (List<Book>) r.data;
 
             if (res == null) return;
-
-            res = res.stream().limit(limit).toList();
 
             data.setAll(res);
             res.forEach(b -> bookCache.put(b.getId(), b));

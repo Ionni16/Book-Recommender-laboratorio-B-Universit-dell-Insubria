@@ -93,6 +93,26 @@ public class MainServer {
 
             Db db = new Db(url, user, pass);
 
+            // ---------- DEBUG ------------
+            try (var conn = db.getConnection()) {
+                System.out.println("[SERVER DB] url=" + conn.getMetaData().getURL());
+                System.out.println("[SERVER DB] user=" + conn.getMetaData().getUserName());
+                System.out.println("[SERVER DB] schema=" + conn.getSchema() + " catalog=" + conn.getCatalog());
+
+                try (var ps = conn.prepareStatement("""
+                            SELECT indexname, indexdef
+                            FROM pg_indexes
+                            WHERE schemaname='br' AND tablename='valutazioni_libri'
+                        """);
+                     var rs = ps.executeQuery()) {
+                    System.out.println("[SERVER DB] indexes br.valutazioni_libri:");
+                    while (rs.next()) System.out.println(" - " + rs.getString(1) + " :: " + rs.getString(2));
+                }
+            }
+            // ----------- FINE DEBUG ------------
+
+
+
             /* =======================
                REPOSITORY + SERVICES
                ======================= */
@@ -234,12 +254,19 @@ public class MainServer {
 
                     if (r == null) yield Response.fail("Review null");
 
-                    // vincolo specifica: puoi valutare solo libri presenti in almeno una tua libreria
-                    if (!librerieRepo.userHasBook(r.getUserid(), r.getBookId())) {
+                    // --------- DEBUG ----------
+                    String uid = (r.getUserid() == null) ? "" : r.getUserid().trim();
+                    int bid = r.getBookId();
+
+                    System.out.println("[SAVE_REVIEW] uid='" + uid + "' len=" + uid.length() + " bookId=" + bid);
+                    // --------- FINE DEBUG ----------
+
+                    if (!librerieRepo.userHasBook(uid, bid)) {
                         yield Response.fail("Puoi valutare solo libri presenti in una tua libreria");
                     }
 
-                    valutazioniRepo.upsert(r);
+                    valutazioniRepo.upsert(new Review(uid, bid, r.getStile(), r.getContenuto(), r.getGradevolezza(),
+                            r.getOriginalita(), r.getEdizione(), r.getVotoFinale(), r.getCommento()));
                     yield Response.ok(true);
                 }
 

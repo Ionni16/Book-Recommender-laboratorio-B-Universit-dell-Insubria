@@ -1276,7 +1276,17 @@ public class BookRecommenderFX extends Application {
 
                 int votoFinale = (int) Math.round((stile + cont + grad + orig + ediz) / 5.0);
 
+                // ---------- DEBUG ----------
+                var libs = libraryService.listUserLibraries(user);
+                var myIds = libs.stream()
+                        .map(Library::getBookIds)
+                        .flatMap(java.util.Collection::stream)
+                        .collect(java.util.stream.Collectors.toSet());
+
+                System.out.println("[DEBUG] user=" + user + " bookId=" + book.getId() + " title=" + book.getTitolo());
+                System.out.println("[DEBUG] myIds contains bookId? " + myIds.contains(book.getId()));
                 Review newR = new Review(user, book.getId(), stile, cont, grad, orig, ediz, votoFinale, comm);
+                // ---------- FINE DEBUG ----------
 
                 boolean ok = editing ? reviewService.updateReview(newR)
                         : reviewService.inserisciValutazione(newR);

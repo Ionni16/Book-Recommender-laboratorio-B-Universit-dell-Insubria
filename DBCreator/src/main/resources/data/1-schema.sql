@@ -134,6 +134,9 @@ CREATE TABLE IF NOT EXISTS br.valutazioni_libri (
     edizione integer NOT NULL,
     voto_finale integer NOT NULL,
     commento character varying(256),
+
+    CONSTRAINT pk_valutazioni_libri PRIMARY KEY (userid, libro_id),
+
     CONSTRAINT valutazioni_libri_contenuto_check CHECK (((contenuto >= 1) AND (contenuto <= 5))),
     CONSTRAINT valutazioni_libri_edizione_check CHECK (((edizione >= 1) AND (edizione <= 5))),
     CONSTRAINT valutazioni_libri_gradevolezza_check CHECK (((gradevolezza >= 1) AND (gradevolezza <= 5))),

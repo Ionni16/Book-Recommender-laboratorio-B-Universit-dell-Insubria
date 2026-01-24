@@ -203,13 +203,13 @@ public class MainServer {
                    ======================= */
                 case SEARCH_BY_TITLE -> {
                     String titolo = (String) req.payload;
-                    List<Book> result = searchService.cercaLibroPerTitolo(titolo, 5000);
+                    List<Book> result = searchService.cercaLibroPerTitolo(titolo, 250);
                     yield Response.ok(result);
                 }
 
                 case SEARCH_BY_AUTHOR -> {
                     String autore = (String) req.payload;
-                    List<Book> result = searchService.cercaLibroPerAutore(autore, 5000);
+                    List<Book> result = searchService.cercaLibroPerAutore(autore, 250);
                     yield Response.ok(result);
                 }
 

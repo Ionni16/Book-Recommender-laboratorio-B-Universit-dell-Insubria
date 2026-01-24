@@ -409,7 +409,6 @@ public class BookRecommenderFX extends Application {
             tfTitle.clear();
             tfAuthor.clear();
             ckOnlyMyLibraries.setSelected(false);
-            data.clear();
             bookCache.clear();
             clearDetail();
             loadInitialResults();
@@ -1951,34 +1950,55 @@ public class BookRecommenderFX extends Application {
     /**
      * Carica una prima lista di risultati per popolare la tabella all'avvio.
      * <p>
-     * Effettua una ricerca con una parola comune e limita i risultati in base allo spinner limit.
      * In caso di errore non blocca l'applicazione.
      * </p>
      *
      */
     private void loadInitialResults() {
+        final int CAP = 250;
+
         try {
+            // Tiene SEMPRE e SOLO i CAP ID più piccoli (ordinati)
+            TreeMap<Integer, Book> best = new TreeMap<>();
 
-            // parola comune per avere risultati subito
-            String seed = "the";
+            List<String> seeds = new ArrayList<>();
+            for (char c = 'a'; c <= 'z'; c++) seeds.add(String.valueOf(c));
+            for (char c = '0'; c <= '9'; c++) seeds.add(String.valueOf(c));
+            seeds.add("'");
+            seeds.add("-");
 
-            Response r = proxy.call(new Request(RequestType.SEARCH_BY_TITLE, seed, null));
-            if (r == null || !r.ok) return;
+            for (String seed : seeds) {
+                Response r = proxy.call(new Request(RequestType.SEARCH_BY_TITLE, seed, null));
+                if (r == null || !r.ok || r.data == null) continue;
 
-            @SuppressWarnings("unchecked")
-            List<Book> res = (List<Book>) r.data;
+                @SuppressWarnings("unchecked")
+                List<Book> res = (List<Book>) r.data;
 
-            if (res == null) return;
+                for (Book b : res) {
+                    int id = b.getId();
+                    if (!best.containsKey(id)) {
+                        best.put(id, b);
 
-            data.setAll(res);
-            res.forEach(b -> bookCache.put(b.getId(), b));
+                        // se supero CAP, butto via i più grandi
+                        while (best.size() > CAP) {
+                            best.pollLastEntry();
+                        }
+                    }
+                }
+            }
 
-            lblStatus.setText("Risultati iniziali: " + res.size());
+            List<Book> ordered = new ArrayList<>(best.values()); // già ordinata per ID
+            data.setAll(ordered);
+            System.out.println("INIT LOADED = " + ordered.size());
+
+            bookCache.clear();
+            for (Book b : ordered) bookCache.put(b.getId(), b);
+
+            lblStatus.setText("Catalogo: " + ordered.size() + " libri");
             clearDetail();
-            if (!res.isEmpty()) tbl.getSelectionModel().select(0);
 
-        } catch (Exception ignored) {
-            // non blocca l'app se fallisce
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

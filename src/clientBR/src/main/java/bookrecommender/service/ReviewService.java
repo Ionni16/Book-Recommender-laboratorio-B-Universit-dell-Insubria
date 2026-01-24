@@ -64,6 +64,24 @@ public class ReviewService {
         return (List<Review>) res.data;
     }
 
+
+    /**
+     * Ritorna tutte le recensioni associate a un libro (di tutti gli utenti).
+     *
+     * @param bookId id del libro
+     * @return lista recensioni del libro; se non ci sono dati ritorna una lista vuota
+     * @throws RuntimeException se la risposta del server non è OK
+     * @see Request#getReviewsByBook(int)
+     */
+    @SuppressWarnings("unchecked")
+    public List<Review> listByBook(int bookId) {
+        Response res = proxy.call(Request.getReviewsByBook(bookId));
+        if (!res.ok) throw new RuntimeException(res.error);
+        if (res.data == null) return Collections.emptyList();
+        return (List<Review>) res.data;
+    }
+
+
     /**
      * Inserisce una nuova recensione sul server.
      *

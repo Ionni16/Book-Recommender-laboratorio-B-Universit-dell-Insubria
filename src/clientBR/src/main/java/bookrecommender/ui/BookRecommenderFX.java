@@ -87,6 +87,7 @@ public class BookRecommenderFX extends Application {
     private Label dAvg;
     private VBox dStarsBox;
     private VBox dSuggestions;
+    private VBox dCommentBox;
 
     private Button btnRateThis;
     private Button btnSuggestThis;
@@ -631,7 +632,11 @@ public class BookRecommenderFX extends Application {
         dAvg.getStyleClass().add("muted");
         dAvg.setWrapText(true);
 
+        Label comT = new Label("Commenti");
+        comT.getStyleClass().add("card-title");
+
         dStarsBox = new VBox(6);
+        dCommentBox = new VBox(6);
 
         Label sugT = new Label("Consigliati");
         sugT.getStyleClass().add("card-title");
@@ -687,7 +692,7 @@ public class BookRecommenderFX extends Application {
                 dTitle, dAuthors,
                 chips,
                 new Separator(),
-                rateT, dAvg, dStarsBox,
+                rateT, dAvg, dStarsBox, comT, dCommentBox,
                 new Separator(),
                 sugT, dSuggestions,
                 new Separator(),
@@ -914,6 +919,7 @@ public class BookRecommenderFX extends Application {
         try {
             AggregationService.ReviewStats rs = aggregationService.getReviewStats(b.getId());
             dStarsBox.getChildren().clear();
+            dCommentBox.getChildren().clear();
 
             if (rs == null || rs.count == 0) {
                 dAvg.setText("Nessuna valutazione disponibile.");
@@ -928,6 +934,27 @@ public class BookRecommenderFX extends Application {
                         starsRow("Edizione", rs.mediaEdizione)
                 );
             }
+            List<Review> reviews = reviewService.listByBook(b.getId());
+            List<Review> withComment = reviews.stream()
+                    .filter(r -> r.getCommento() != null && !r.getCommento().isBlank())
+                    .toList();
+
+            dCommentBox.getChildren().clear();
+
+            if (withComment.isEmpty()) {
+                dCommentBox.getChildren().add(labelMuted("Nessun commento disponibile."));
+            } else {
+                boolean first = true;
+                for (Review r : withComment) {
+                    if (!first) dCommentBox.getChildren().add(new Separator());
+                    first = false;
+
+                    Label c = new Label(r.getCommento().trim());
+                    c.setWrapText(true);
+                    dCommentBox.getChildren().add(c);
+                }
+            }
+
         } catch (Exception e) {
             dAvg.setText("Errore aggregazione: " + e.getMessage());
             dStarsBox.getChildren().setAll(labelMuted("Errore aggregazione."));

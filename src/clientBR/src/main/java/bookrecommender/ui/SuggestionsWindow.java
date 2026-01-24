@@ -139,7 +139,7 @@ public class SuggestionsWindow extends Stage {
      * </p>
      *
      * @return nodo JavaFX centrale
-     * @see FxUtil#buildReloadDeleteBar(TableView, String, Runnable, String, Runnable)
+     * @see FxUtil#buildReloadUpdateDeleteBar(TableView, String, Runnable, String, Runnable, String, Runnable)
      * @see FxUtil#wrapCard(VBox)
      */
     private Node buildCenter() {
@@ -169,12 +169,15 @@ public class SuggestionsWindow extends Stage {
 
         FxUtil.addColumns(tbl, List.of(cBookId, cBookTitle, cSug));
 
-        HBox actions = FxUtil.buildReloadDeleteBar(
+        HBox actions = FxUtil.buildReloadUpdateDeleteBar(
                 tbl,
                 "Ricarica",
                 this::load,
+                "modifica",
+                this::updateSelected,
                 "Elimina",
                 this::deleteSelected
+
         );
 
         card.getChildren().addAll(new Label("Elenco"), tbl, actions);
@@ -249,6 +252,128 @@ public class SuggestionsWindow extends Stage {
         } catch (Exception e) {
             FxUtil.error(this, "Errore", e.getMessage());
         }
+    }
+
+
+    /**
+     * Modifica il consiglio selezionato aprendo un editor per impostare fino a 3 ID libro suggeriti.
+     * <p>
+     * La modifica avviene reinviando al server l'intero {@link Suggestion} tramite
+     * {@link SuggestionService#inserisciSuggerimento(Suggestion)} (che lato server sostituisce i suggerimenti).
+     * </p>
+     *
+     * <p>
+     * Applica vincoli lato client coerenti con il server:
+     * </p>
+     * <ul>
+     *   <li>Almeno 1 suggerimento;</li>
+     *   <li>Massimo 3 suggerimenti;</li>
+     *   <li>ID unici;</li>
+     *   <li>Nessun suggerito uguale al libro base.</li>
+     * </ul>
+     *
+     * @see SuggestionService#inserisciSuggerimento(Suggestion)
+     * @see FxUtil#error(javafx.stage.Window, String, String)
+     * @see FxUtil#toast(javafx.scene.Scene, String)
+     * @see #load()
+     */
+    private void updateSelected() {
+        Suggestion s = tbl.getSelectionModel().getSelectedItem();
+        if (s == null) return;
+
+        String user = authService.getCurrentUserid();
+        if (user == null) {
+            FxUtil.error(this, "Errore", "Devi essere loggato per modificare un consiglio.");
+            return;
+        }
+
+        int bookId = s.getBookId();
+        String baseTitle = resolveTitle(bookId);
+
+        List<Integer> current = s.getSuggeriti();
+        String v1 = (current.size() > 0 && current.get(0) != null) ? String.valueOf(current.get(0)) : "";
+        String v2 = (current.size() > 1 && current.get(1) != null) ? String.valueOf(current.get(1)) : "";
+        String v3 = (current.size() > 2 && current.get(2) != null) ? String.valueOf(current.get(2)) : "";
+
+        Dialog<Void> d = new Dialog<>();
+        d.initOwner(this);
+        d.setTitle("Modifica consiglio");
+        d.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+        Label h = new Label("Libri consigliati (max 3)");
+        h.getStyleClass().add("title");
+        Label sub = new Label(baseTitle);
+        sub.getStyleClass().add("subtitle");
+
+        TextField t1 = new TextField(v1);
+        TextField t2 = new TextField(v2);
+        TextField t3 = new TextField(v3);
+        t1.setPromptText("ID libro suggerito #1");
+        t2.setPromptText("ID libro suggerito #2");
+        t3.setPromptText("ID libro suggerito #3");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+
+        int row = 0;
+        grid.add(new Label("Suggerito 1"), 0, row); grid.add(t1, 1, row++);
+        grid.add(new Label("Suggerito 2"), 0, row); grid.add(t2, 1, row++);
+        grid.add(new Label("Suggerito 3"), 0, row); grid.add(t3, 1, row++);
+
+        ColumnConstraints c1 = new ColumnConstraints();
+        c1.setMinWidth(170);
+        ColumnConstraints c2 = new ColumnConstraints();
+        c2.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(c1, c2);
+
+        Button save = new Button("Salva modifiche");
+        save.getStyleClass().add("primary");
+        save.setMaxWidth(Double.MAX_VALUE);
+
+        save.setOnAction(e -> {
+            try {
+                java.util.LinkedHashSet<Integer> set = new java.util.LinkedHashSet<>();
+
+                for (TextField tf : List.of(t1, t2, t3)) {
+                    String raw = tf.getText() == null ? "" : tf.getText().trim();
+                    if (raw.isBlank()) continue;
+
+                    int id;
+                    try {
+                        id = Integer.parseInt(raw);
+                    } catch (NumberFormatException ex) {
+                        throw new IllegalArgumentException("ID non valido: " + raw);
+                    }
+
+                    if (id == bookId) continue; // come server: niente self-reference
+                    set.add(id);
+                    if (set.size() >= 3) break;
+                }
+
+                if (set.isEmpty()) throw new IllegalArgumentException("Devi inserire almeno 1 libro da consigliare.");
+                if (set.size() > 3) throw new IllegalArgumentException("Massimo 3 consigli.");
+
+                Suggestion updated = new Suggestion(user, bookId, new java.util.ArrayList<>(set));
+
+                boolean ok = suggestionService.inserisciSuggerimento(updated);
+                if (!ok) throw new IllegalStateException("Aggiornamento fallito.");
+
+                FxUtil.toast(getScene(), "Consiglio aggiornato");
+                load();
+                d.close();
+
+            } catch (Exception ex) {
+                FxUtil.error(this, "Errore", ex.getMessage());
+            }
+        });
+
+        VBox box = new VBox(12, h, sub, new Separator(), grid, new Separator(), save);
+        box.getStyleClass().add("card");
+        box.setPadding(new Insets(14));
+
+        d.getDialogPane().setContent(box);
+        d.showAndWait();
     }
 
 

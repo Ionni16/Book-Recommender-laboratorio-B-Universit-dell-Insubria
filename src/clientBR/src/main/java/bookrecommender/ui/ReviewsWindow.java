@@ -142,7 +142,7 @@ public class ReviewsWindow extends Stage {
      * </ul>
      *
      * @return nodo JavaFX centrale
-     * @see FxUtil#buildReloadDeleteBar(TableView, String, Runnable, String, Runnable)
+     * @see FxUtil#buildReloadUpdateDeleteBar(TableView, String, Runnable, String, Runnable, String, Runnable)
      * @see FxUtil#wrapCard(VBox)
      */
     private Node buildCenter() {
@@ -185,7 +185,7 @@ public class ReviewsWindow extends Stage {
 
         FxUtil.addColumns(tbl, List.of(cBookId, cTitle, cFinal, cComment));
 
-        HBox actions = FxUtil.buildReloadDeleteBar(tbl, "Ricarica", this::load, "Elimina", this::deleteSelected);
+        HBox actions = FxUtil.buildReloadUpdateDeleteBar(tbl, "Ricarica", this::load,"Modifica", this::updateSelected, "Elimina", this::deleteSelected);
 
         card.getChildren().addAll(new Label("Elenco"), tbl, actions);
         VBox.setVgrow(tbl, Priority.ALWAYS);
@@ -289,6 +289,121 @@ public class ReviewsWindow extends Stage {
             FxUtil.error(this, "Errore", e.getMessage());
         }
     }
+
+
+    /**
+     * Modifica la valutazione selezionata aprendo un editor con i 5 criteri (1-5) e il commento.
+     * <p>
+     * La {@link Review} è trattata come oggetto immutabile: la modifica avviene creando una nuova istanza
+     * e inviandola al server tramite {@link ReviewService#updateReview(Review)}.
+     * </p>
+     *
+     * <p>
+     * In caso di successo, ricarica l'elenco tramite {@link #load()}.
+     * </p>
+     *
+     * @see ReviewService#updateReview(Review)
+     * @see FxUtil#error(javafx.stage.Window, String, String)
+     * @see FxUtil#toast(javafx.scene.Scene, String)
+     * @see #load()
+     */
+    private void updateSelected() {
+        Review r = tbl.getSelectionModel().getSelectedItem();
+        if (r == null) return;
+
+        String user = authService.getCurrentUserid();
+        if (user == null) {
+            FxUtil.error(this, "Errore", "Devi essere loggato per modificare una valutazione.");
+            return;
+        }
+
+        String title = null;
+        Book b = libriRepo.findById(r.getBookId());
+        if (b != null) title = b.getTitolo();
+        if (title == null || title.isBlank()) title = titleCache.getOrDefault(r.getBookId(), String.valueOf(r.getBookId()));
+
+        Dialog<Void> d = new Dialog<>();
+        d.initOwner(this);
+        d.setTitle("Modifica valutazione");
+        d.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+        Label h = new Label("Aggiorna la tua valutazione");
+        h.getStyleClass().add("title");
+        Label sub = new Label(title);
+        sub.getStyleClass().add("subtitle");
+
+        Spinner<Integer> sStile = new Spinner<>(1, 5, r.getStile());
+        Spinner<Integer> sCont = new Spinner<>(1, 5, r.getContenuto());
+        Spinner<Integer> sGrad = new Spinner<>(1, 5, r.getGradevolezza());
+        Spinner<Integer> sOrig = new Spinner<>(1, 5, r.getOriginalita());
+        Spinner<Integer> sEdiz = new Spinner<>(1, 5, r.getEdizione());
+        sStile.setEditable(false);
+        sCont.setEditable(false);
+        sGrad.setEditable(false);
+        sOrig.setEditable(false);
+        sEdiz.setEditable(false);
+
+        TextArea comment = new TextArea(r.getCommento() == null ? "" : r.getCommento());
+        comment.setPromptText("Commento (max 256 caratteri) — opzionale");
+        comment.setWrapText(true);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+
+        int row = 0;
+        grid.add(new Label("Stile (1-5)"), 0, row);       grid.add(sStile, 1, row++);
+        grid.add(new Label("Contenuto (1-5)"), 0, row);   grid.add(sCont, 1, row++);
+        grid.add(new Label("Gradevolezza (1-5)"), 0, row);grid.add(sGrad, 1, row++);
+        grid.add(new Label("Originalità (1-5)"), 0, row); grid.add(sOrig, 1, row++);
+        grid.add(new Label("Edizione (1-5)"), 0, row);    grid.add(sEdiz, 1, row++);
+
+        ColumnConstraints c1 = new ColumnConstraints();
+        c1.setMinWidth(170);
+        ColumnConstraints c2 = new ColumnConstraints();
+        c2.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(c1, c2);
+
+        Button save = new Button("Salva modifiche");
+        save.getStyleClass().add("primary");
+        save.setMaxWidth(Double.MAX_VALUE);
+
+        save.setOnAction(e -> {
+            try {
+                String comm = comment.getText() == null ? "" : comment.getText().trim();
+                if (comm.length() > 256) throw new IllegalArgumentException("Commento troppo lungo (max 256).");
+
+                int stile = sStile.getValue();
+                int cont = sCont.getValue();
+                int grad = sGrad.getValue();
+                int orig = sOrig.getValue();
+                int ediz = sEdiz.getValue();
+
+                int votoFinale = (int) Math.round((stile + cont + grad + orig + ediz) / 5.0);
+
+                Review updated = new Review(user, r.getBookId(), stile, cont, grad, orig, ediz, votoFinale, comm);
+
+                boolean ok = reviewService.updateReview(updated);
+                if (!ok) throw new IllegalStateException("Aggiornamento fallito.");
+
+                FxUtil.toast(getScene(), "Valutazione aggiornata");
+                load();
+                d.close();
+
+            } catch (Exception ex) {
+                FxUtil.error(this, "Errore", ex.getMessage());
+            }
+        });
+
+        VBox box = new VBox(12, h, sub, new Separator(), grid, comment, new Separator(), save);
+        box.getStyleClass().add("card");
+        box.setPadding(new Insets(14));
+
+        d.getDialogPane().setContent(box);
+        d.showAndWait();
+    }
+
+
 
     /**
      * Apre la finestra delle valutazioni come dialog modale

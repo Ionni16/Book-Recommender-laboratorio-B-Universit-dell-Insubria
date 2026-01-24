@@ -151,12 +151,15 @@ public final class FxUtil {
      * @param onDelete azione eseguita al click di eliminazione
      * @return contenitore {@link HBox} con i pulsanti azione
      */
-    public static HBox buildReloadDeleteBar(
+    public static HBox buildReloadUpdateDeleteBar(
             TableView<?> table,
             String reloadText,
             Runnable onReload,
+            String updateText,
+            Runnable onUpdate,
             String deleteText,
             Runnable onDelete
+
     ) {
         Button btnDelete = new Button(deleteText);
         btnDelete.getStyleClass().add("danger");
@@ -167,7 +170,12 @@ public final class FxUtil {
         btnReload.getStyleClass().add("ghost");
         btnReload.setOnAction(e -> onReload.run());
 
-        HBox actions = new HBox(10, btnReload, btnDelete);
+        Button btnUpdate = new Button(updateText);
+        btnUpdate.getStyleClass().add("success");
+        btnDelete.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
+        btnUpdate.setOnAction(e -> onUpdate.run());
+
+        HBox actions = new HBox(10, btnReload, btnUpdate, btnDelete);
         actions.setAlignment(Pos.CENTER_RIGHT);
         return actions;
     }

@@ -1,148 +1,182 @@
-BOOK RECOMMENDER – README
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Progetto di Laboratorio B – Architettura Client/Server
-Tecnologie: Java, Maven, PostgreSQL, JDBC, JavaFX
+<img src="client/src/main/resources/icons/SigilloAteneoTestoColori.svg" style="float: right; width: 250px;" alt="Insubria Logo">
 
+# 📚 Book Recommender
 
-========================
-STRUTTURA DEL PROGETTO
-========================
+**Progetto universitario per l'esame di Laboratorio Interdisciplinare B – Università degli Studi dell’Insubria (2026)**
 
-- src/
-  Contiene i sorgenti Maven multi-modulo:
-  - common : classi condivise (model, DTO, networking)
-  - serverBR : server e accesso al database
-  - clientBR : client con interfaccia grafica JavaFX
+Applicazione **client–server** scritta in **Java 17** per la ricerca, gestione e raccomandazione di libri, con:
 
-- bin/
-  Contiene i file JAR eseguibili:
-  - clientBR.jar
-  - serverBR.jar
+* client desktop **JavaFX**
+* backend su **PostgreSQL**
+* comunicazione tramite protocollo applicativo Request/Response
 
-- doc/
-  Contiene la documentazione:
-  - Manuale Utente (PDF)
-  - Manuale Tecnico (PDF)
-  - JavaDoc
+Documentazione tecnica, UML e JavaDoc disponibili nella cartella `/doc`.
 
-- schema.sql
-  Script SQL per la creazione del database (tabelle e vincoli)
+---
 
-- pom.xml
-  POM Maven principale (multi-modulo)
+## 👥 Autori
 
+* **Matteo Ferrario**
+* **Ionuț Puiu**
+* **Richard Zefi**
 
-========================
-REQUISITI
-========================
+---
 
-- Java JDK 17 (o superiore)
-- Maven
-- PostgreSQL
-- Sistema operativo: Windows (comandi riportati per Windows)
+## 📦 Dipendenze principali
 
+Il progetto utilizza **Maven** per la gestione delle dipendenze (vedi `pom.xml`).
 
-========================
-DATABASE (PostgreSQL)
-========================
+| Libreria        | Versione |
+| --------------- | -------- |
+| JavaFX          | 17.x     |
+| PostgreSQL JDBC | 42.x     |
+| HikariCP        | 5.x      |
+| SLF4J           | 2.x      |
 
-Il progetto utilizza un database PostgreSQL accessibile tramite JDBC.
+---
 
-È fornito lo script:
-- src/serverBR/src/main/resources/schema.sql
+## ⚙️ Prerequisiti
 
-Lo script crea tutte le tabelle e i vincoli necessari.
-Il database viene inizialmente creato VUOTO.
+* **Java JDK 17**
+* **Maven 3.8+**
+* **PostgreSQL 13+**
+* IDE consigliato: **IntelliJ IDEA**
+* Sistema operativo: Windows / Linux / macOS
 
-Non è incluso un popolamento iniziale (seed) per evitare di
-appesantire la consegna.
-I dati (libri, utenti, valutazioni) vengono inseriti tramite
-le funzionalità dell’applicazione client.
+---
 
+## 🗄️ Setup Database PostgreSQL
 
-------------------------
-CREAZIONE DATABASE
-------------------------
+### 1. Prerequisiti
 
-ATTENZIONE: il server deve essere SPENTO durante questi passaggi.
+* PostgreSQL installato e in esecuzione
+* Database vuoto disponibile
 
-1) Creare il database (come utente amministratore PostgreSQL):
+---
 
-"C:\Program Files\PostgreSQL\16\bin\createdb.exe" -U postgres bookrecommender
+### 2. Creazione database
 
-2) Dare i permessi all’utente applicativo (es. br_user):
+```sql
+CREATE DATABASE bookrecommender;
+```
 
-"C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -d bookrecommender -c "GRANT ALL PRIVILEGES ON DATABASE bookrecommender TO br_user;"
+---
 
-3) Applicare lo schema SQL:
+### 3. Creazione schema e popolamento DB (DBCreator)
 
-"C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -d bookrecommender -f src/serverBR/src/main/resources/schema.sql
+⚠️ **TUTTI i comandi vanno eseguiti dalla directory `DBCreator`**
 
+```bash
+cd DBCreator
+```
 
-========================
-BUILD DEL PROGETTO
-========================
+#### Creazione database e schema
 
-Dalla cartella root del progetto (dove si trova pom.xml):
+```bash
+mvn -pl DBCreator clean compile
+```
 
-mvn -U clean install
+Questo comando crea lo schema del database e popola le tabelle iniziali.
 
+#### Reset completo database
 
-========================
-AVVIO DEL SERVER
-========================
+Se la creazione viene interrotta, parziale o presenta errori:
 
-Il server viene avviato tramite Maven.
+```bash
+mvn exec:java "-Dexec.args=--reset"
+```
 
-PowerShell / CMD:
+Questo comando elimina e ricrea completamente il database.
 
-mvn -pl src/serverBR exec:java "-Dexec.mainClass=bookrecommender.server.MainServer"
+---
 
-All’avvio il server richiede:
-- host (es. localhost)
-- porta (es. 5432)
-- nome database (bookrecommender)
-- username PostgreSQL (es. br_user)
-- password
+## 🧱 Build progetto
 
+Dalla root del progetto:
 
-========================
-AVVIO DEL CLIENT
-========================
+```bash
+mvn clean package
+```
 
-Il client utilizza JavaFX.
+Gli artefatti verranno generati in:
 
-PowerShell / CMD:
+```
+/target
+```
 
-mvn -pl src/clientBR javafx:run
+---
 
+## 🔐 Credenziali database
 
-========================
-UTILIZZO DELL’APPLICAZIONE
-========================
+Le credenziali di accesso al database sono configurate nel progetto (es. file di configurazione o costanti Java).
 
-Una volta avviati server e client è possibile:
-- registrare utenti
-- inserire libri nella libreria
-- inserire valutazioni
-- ottenere raccomandazioni di libri
+Nel setup di sviluppo possono essere presenti valori come:
 
-Il database viene popolato dinamicamente durante l’utilizzo
-dell’applicazione.
+```
+br_user
+br_password
+```
 
+Queste credenziali sono utilizzate esclusivamente per la connessione al database PostgreSQL e non influiscono sulla logica applicativa del client.
 
-========================
-NOTE IMPORTANTI
-========================
+````
 
-- Il database non è condiviso: ogni utente può creare il proprio DB locale.
-- Non è richiesto alcun dataset iniziale dalle specifiche del progetto.
-- La presenza dello script schema.sql garantisce la riproducibilità del sistema.
-- I file JAR presenti nella cartella /bin sono quelli da utilizzare per la consegna.
+---
 
+## ▶️ Avvio server
 
-========================
-AUTORI
-========================
+⚠️ Il server deve essere avviato **dalla root del progetto**.
 
-Vedi file autori.txt
+```bash
+mvn -pl src/serverBR exec:java
+````
+
+Server disponibile su:
+
+```
+127.0.0.1:5050
+```
+
+---
+
+## ▶️ Avvio client JavaFX
+
+```bash
+mvn -pl src/clientBR javafx:run   ```
+
+---
+
+## ▶️ Avvio da IDE
+
+Classi principali:
+
+* Server: `Main_Server`
+* Client: `Main_Client`
+* DB Init: `DBCreator`
+
+---
+
+## 🔍 Caricamento iniziale catalogo
+
+* All’avvio e dopo Reset viene caricato un sottoinsieme del catalogo
+* Limite fisso (es. 500 libri)
+* Ordinamento per **ID crescente**
+* Niente duplicati
+* Ricerca filtrata con limite configurabile separato
+
+---
+
+## 📌 Note tecniche
+
+* Il caricamento iniziale può richiedere alcuni secondi per dataset molto grandi
+* Gli ID visualizzati sono **chiavi reali del database**
+* Il server deve essere avviato prima del client
+
+---
+
+## 📄 Licenza
+
+Distribuito sotto licenza **MIT**. Vedi file `LICENSE`.
+

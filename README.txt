@@ -121,7 +121,6 @@ br_password
 
 Queste credenziali sono utilizzate esclusivamente per la connessione al database PostgreSQL e non influiscono sulla logica applicativa del client.
 
-```
 
 ---
 
@@ -144,7 +143,8 @@ Server disponibile su:
 ## ▶️ Avvio client JavaFX
 
 ```bash
-mvn -pl src/clientBR javafx:run   ```
+mvn -pl src/clientBR javafx:run   
+```
 
 ---
 

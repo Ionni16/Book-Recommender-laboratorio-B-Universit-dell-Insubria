@@ -108,22 +108,6 @@ Gli artefatti verranno generati in:
 
 ---
 
-## 🔐 Credenziali database
-
-Le credenziali di accesso al database sono configurate nel progetto (es. file di configurazione o costanti Java).
-
-Nel setup di sviluppo possono essere presenti valori come:
-
-```
-br_user
-br_password
-```
-
-Queste credenziali sono utilizzate esclusivamente per la connessione al database PostgreSQL e non influiscono sulla logica applicativa del client.
-
-
----
-
 ## ▶️ Avvio server
 
 ⚠️ Il server deve essere avviato **dalla root del progetto**.

@@ -21,7 +21,7 @@ Documentazione tecnica, UML e JavaDoc disponibili nella cartella `/doc`.
 ## 👥 Autori
 
 * **Matteo Ferrario**
-* **Ionuț Puiu**
+* **Ionut Puiu**
 * **Richard Zefi**
 
 ---

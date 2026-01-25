@@ -136,8 +136,8 @@ mvn -pl src/clientBR javafx:run
 
 Classi principali:
 
-* Server: `Main_Server`
-* Client: `Main_Client`
+* Server: `MainServer`
+* Client: `Main`
 * DB Init: `DBCreator`
 
 ---

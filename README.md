@@ -145,7 +145,7 @@ Classi principali:
 ## 🔍 Caricamento iniziale catalogo
 
 * All’avvio e dopo Reset viene caricato un sottoinsieme del catalogo
-* Limite fisso (es. 500 libri)
+* Limite fisso (es. 250 libri)
 * Ordinamento per **ID crescente**
 * Niente duplicati
 * Ricerca filtrata con limite configurabile separato

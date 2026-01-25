@@ -34,8 +34,6 @@ Il progetto utilizza **Maven** per la gestione delle dipendenze (vedi `pom.xml`)
 | --------------- | -------- |
 | JavaFX          | 17.x     |
 | PostgreSQL JDBC | 42.x     |
-| HikariCP        | 5.x      |
-| SLF4J           | 2.x      |
 
 ---
 

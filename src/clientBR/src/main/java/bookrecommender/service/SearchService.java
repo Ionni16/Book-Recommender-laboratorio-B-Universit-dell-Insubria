@@ -34,15 +34,20 @@ public class SearchService {
     /** Proxy di rete usato per comunicare con il server. */
     private final BRProxy proxy;
 
+    public SearchService(LibriRepository ignored, BRProxy proxy) {
+        this.proxy = proxy;
+    }
+
+
     /**
      * Crea un servizio di ricerca libri.
      *
      * @param ignored repository dei libri, attualmente ignorato
      */
     public SearchService(LibriRepository ignored) {
-        // La GUI del LabA passa ancora LibriRepository: lo ignoriamo (per compatibilità).
-        this.proxy = new BRProxy("127.0.0.1", 5050);
+        this(ignored, new BRProxy("127.0.0.1", 5050));
     }
+
 
     /**
      * Cerca libri il cui titolo contiene una stringa specificata.
@@ -78,5 +83,11 @@ public class SearchService {
         }
         if (res.data == null) return Collections.emptyList();
         return (List<Book>) res.data;
+    }
+
+    public Book getBookById(int bookId) {
+        Response res = proxy.call(Request.getBookById(bookId));
+        if (!res.ok) throw new RuntimeException(res.error);
+        return (Book) res.data;
     }
 }

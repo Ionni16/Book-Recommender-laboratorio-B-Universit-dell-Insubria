@@ -7,12 +7,15 @@ import bookrecommender.net.Response;
 import bookrecommender.repo.LibriRepository;
 import bookrecommender.service.*;
 import bookrecommender.net.BRProxy;
+import java.util.concurrent.*;
+
 
 import javafx.application.Application;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -62,6 +65,9 @@ public class BookRecommenderFX extends Application {
     // Cache locale libri visti
     private final Map<Integer, Book> bookCache = new HashMap<>();
 
+    private final ExecutorService ioPool = Executors.newFixedThreadPool(4);
+
+
     // ---- AppBar buttons ----
     private Button btnLogin;
     private Button btnRegister;
@@ -88,6 +94,10 @@ public class BookRecommenderFX extends Application {
     private VBox dStarsBox;
     private VBox dSuggestions;
     private VBox dCommentBox;
+    private Button btnToggleComments;
+    private boolean commentsExpanded = false;
+    private List<Review> lastComments = List.of();
+
 
     private Button btnRateThis;
     private Button btnSuggestThis;
@@ -141,12 +151,12 @@ public class BookRecommenderFX extends Application {
         // Repo client NON legge file
         libriRepo = new LibriRepository(IGNORED_PATH); // Path ignorato
 
-        searchService = new SearchService(libriRepo);
+        searchService = new SearchService(libriRepo, proxy);
         authService = new AuthService(SERVER_HOST, SERVER_PORT);
         libraryService = new LibraryService(IGNORED_PATH); // Path ignorato
-        reviewService = new ReviewService(IGNORED_PATH, IGNORED_PATH);
+        reviewService = new ReviewService(IGNORED_PATH, IGNORED_PATH, proxy);
         suggestionService = new SuggestionService(IGNORED_PATH, IGNORED_PATH); // Path ignorati
-        aggregationService = new AggregationService(IGNORED_PATH, IGNORED_PATH); // Path ignorati
+        aggregationService = new AggregationService(proxy);
 
         StackPane stack = new StackPane();
         BorderPane app = new BorderPane();
@@ -637,6 +647,16 @@ public class BookRecommenderFX extends Application {
 
         dStarsBox = new VBox(6);
         dCommentBox = new VBox(6);
+        btnToggleComments = new Button();               // testo lo decidiamo a runtime
+        btnToggleComments.getStyleClass().add("ghost");
+        btnToggleComments.setMaxWidth(Double.MAX_VALUE);
+        btnToggleComments.setVisible(false);
+        btnToggleComments.setManaged(false);
+        btnToggleComments.setOnAction(ev -> {
+            commentsExpanded = !commentsExpanded;
+            renderComments(); // ridisegna in base allo stato
+        });
+
 
         Label sugT = new Label("Consigliati");
         sugT.getStyleClass().add("card-title");
@@ -692,7 +712,7 @@ public class BookRecommenderFX extends Application {
                 dTitle, dAuthors,
                 chips,
                 new Separator(),
-                rateT, dAvg, dStarsBox, comT, dCommentBox,
+                rateT, dAvg, dStarsBox, comT, dCommentBox, btnToggleComments,
                 new Separator(),
                 sugT, dSuggestions,
                 new Separator(),
@@ -790,59 +810,85 @@ public class BookRecommenderFX extends Application {
         SearchMode mode = cbSearchMode.getValue();
         int limit = spLimit.getValue();
 
+        final String title = safe(tfTitle.getText());
+        final String author = safe(tfAuthor.getText());
+        final int year = spYear.getValue();
+        final boolean onlyMy = ckOnlyMyLibraries.isSelected();
+
+        // Validazione UI (sincrona)
         try {
-            List<Book> res;
-
             if (mode == SearchMode.TITLE) {
-                String title = safe(tfTitle.getText());
                 if (title.length() < 2) throw new IllegalArgumentException("Inserisci almeno 2 caratteri nel titolo.");
-                res = searchService.cercaLibroPerTitolo(title);
-
-            } else if (mode == SearchMode.AUTHOR) {
-                String author = safe(tfAuthor.getText());
+            } else if (mode == SearchMode.AUTHOR || mode == SearchMode.AUTHOR_YEAR) {
                 if (author.length() < 2) throw new IllegalArgumentException("Inserisci almeno 2 caratteri nell'autore.");
-                res = searchService.cercaLibroPerAutore(author);
-
-            } else { // AUTHOR_YEAR (richiesto)
-                String author = safe(tfAuthor.getText());
-                if (author.length() < 2) throw new IllegalArgumentException("Inserisci almeno 2 caratteri nell'autore.");
-                int year = spYear.getValue();
-
-                Request req = new Request(RequestType.SEARCH_BY_AUTHOR_YEAR, new Object[]{author, year, limit}, null);
-                Response r = proxy.call(req);
-                if (!r.ok) throw new RuntimeException(r.error);
-                @SuppressWarnings("unchecked")
-                List<Book> tmp = (r.data == null) ? List.of() : (List<Book>) r.data;
-                res = tmp;
             }
+        } catch (Exception ex) {
+            FxUtil.error(owner, "Ricerca non valida", ex.getMessage());
+            return;
+        }
 
-            // filtro: solo libri nelle mie librerie
-            if (ckOnlyMyLibraries.isSelected()) {
-                String user = ensureLoggedIn(owner);
-                if (user == null) return;
+        // se serve login, fallo prima (dialog su UI thread)
+        final String user;
+        if (onlyMy) {
+            user = ensureLoggedIn(owner);
+            if (user == null) return;
+        } else {
+            user = null;
+        }
 
-                Set<Integer> myBookIds = libraryService.listUserLibraries(user).stream()
-                        .flatMap(l -> l.getBookIds().stream())
-                        .collect(Collectors.toSet());
+        lblStatus.setText("Ricerca in corso…");
 
-                res = res.stream().filter(b -> myBookIds.contains(b.getId())).collect(Collectors.toList());
+        Task<List<Book>> task = new Task<>() {
+            @Override
+            protected List<Book> call() {
+                List<Book> res;
+
+                if (mode == SearchMode.TITLE) {
+                    res = searchService.cercaLibroPerTitolo(title);
+
+                } else if (mode == SearchMode.AUTHOR) {
+                    res = searchService.cercaLibroPerAutore(author);
+
+                } else { // AUTHOR_YEAR
+                    Request req = new Request(RequestType.SEARCH_BY_AUTHOR_YEAR, new Object[]{author, year, limit}, null);
+                    Response r = proxy.call(req);
+                    if (!r.ok) throw new RuntimeException(r.error);
+                    @SuppressWarnings("unchecked")
+                    List<Book> tmp = (r.data == null) ? List.of() : (List<Book>) r.data;
+                    res = tmp;
+                }
+
+                if (onlyMy) {
+                    Set<Integer> myBookIds = libraryService.listUserLibraries(user).stream()
+                            .flatMap(l -> l.getBookIds().stream())
+                            .collect(java.util.stream.Collectors.toSet());
+                    res = res.stream().filter(b -> myBookIds.contains(b.getId())).toList();
+                }
+
+                return res.stream().limit(limit).toList();
             }
+        };
 
-            // applica limite anche lato client per robustezza
-            res = res.stream().limit(limit).collect(Collectors.toList());
+        task.setOnSucceeded(e -> {
+            List<Book> res = task.getValue();
 
-            // aggiorna cache locale libri visti
             for (Book b : res) bookCache.put(b.getId(), b);
 
             data.setAll(res);
             lblStatus.setText("Risultati: " + res.size());
             clearDetail();
             if (!res.isEmpty()) tbl.getSelectionModel().select(0);
+        });
 
-        } catch (Exception ex) {
-            FxUtil.error(owner, "Ricerca non valida", ex.getMessage());
-        }
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            FxUtil.error(owner, "Errore ricerca", ex == null ? "Errore sconosciuto" : ex.getMessage());
+            lblStatus.setText("Ricerca fallita");
+        });
+
+        ioPool.submit(task);
     }
+
 
 
     /**
@@ -902,68 +948,118 @@ public class BookRecommenderFX extends Application {
 
         selectedBook = b;
         refreshUserUi();
-
-        // aggiorna cache
         bookCache.put(b.getId(), b);
 
         dTitle.setText(nvl(b.getTitolo(), "-"));
         dAuthors.setText(b.getAutori() == null ? "-" : String.join(", ", b.getAutori()));
-
         String meta = "ID " + b.getId() + " • " + (b.getAnno() == null ? "Anno n/d" : b.getAnno());
         dMeta.setText(meta);
-
         dCategory.setText(nvl(b.getCategoria(), "Categoria n/d"));
         dPublisher.setText(nvl(b.getEditore(), "Editore n/d"));
 
-        // === Aggregazioni recensioni (remote) ===
-        try {
-            AggregationService.ReviewStats rs = aggregationService.getReviewStats(b.getId());
+        // placeholder mentre carica
+        dAvg.setText("Caricamento…");
+        dStarsBox.getChildren().setAll(labelMuted("Caricamento…"));
+        dCommentBox.getChildren().setAll(labelMuted("Caricamento…"));
+        dSuggestions.getChildren().setAll(labelMuted("Caricamento…"));
+
+        final int bookId = b.getId();
+
+        class DetailData {
+            List<Review> reviews;
+            AggregationService.ReviewStats rs;
+            AggregationService.SuggestionsStats ss;
+
+            // id -> Book risolto (titolo incluso), solo per i suggeriti che non erano in cache
+            Map<Integer, Book> suggestedBooks = new HashMap<>();
+        }
+
+
+        Task<DetailData> task = new Task<>() {
+            @Override
+            protected DetailData call() {
+                DetailData dd = new DetailData();
+
+                // 1) UNA sola call per le recensioni
+                dd.reviews = reviewService.listByBook(bookId);
+                dd.rs = aggregationService.computeReviewStats(dd.reviews);
+
+                dd.ss = aggregationService.getSuggestionsStats(bookId);
+
+                // Risolvi i titoli dei consigliati (solo top 5) in background
+                if (dd.ss != null && dd.ss.suggeritiCount != null && !dd.ss.suggeritiCount.isEmpty()) {
+
+                    // prendo i top 5 (come poi mostri in UI)
+                    List<Integer> topIds = dd.ss.suggeritiCount.entrySet().stream()
+                            .sorted((a, b2) -> Integer.compare(b2.getValue(), a.getValue())) // desc per count
+                            .limit(5)
+                            .map(Map.Entry::getKey)
+                            .toList();
+
+                    for (Integer id : topIds) {
+                        if (id == null) continue;
+
+                        // se già in cache, ok
+                        Book cached = bookCache.get(id);
+                        if (cached != null && cached.getTitolo() != null && !cached.getTitolo().isBlank()) continue;
+
+                        // altrimenti chiedo al server
+                        try {
+                            Book fetched = searchService.getBookById(id);
+                            if (fetched != null) {
+                                dd.suggestedBooks.put(id, fetched);
+                                bookCache.put(id, fetched); // aggiorna cache globale
+                            }
+                        } catch (Exception ignored) {
+                            // se fallisce, resterà l'ID come fallback
+                        }
+                    }
+                }
+
+                return dd;
+
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            DetailData dd = task.getValue();
+
+            // --- stelle / medie ---
             dStarsBox.getChildren().clear();
             dCommentBox.getChildren().clear();
 
-            if (rs == null || rs.count == 0) {
-                dAvg.setText("Nessuna valutazione disponibile.");
-                dStarsBox.getChildren().setAll(labelMuted("Nessuna valutazione disponibile."));
+            if (dd.rs == null || dd.rs.count == 0) {
+                dAvg.setText("—");
+                dStarsBox.getChildren().setAll(
+                    labelMuted("Nessuna valutazione disponibile.")
+                );
             } else {
-                dAvg.setText("Media voto finale: " + DF1.format(rs.mediaVotoFinale) + "  |  N. valutazioni: " + rs.count);
+                dAvg.setText("Media voto finale: " + DF1.format(dd.rs.mediaVotoFinale) + "  |  N. valutazioni: " + dd.rs.count);
                 dStarsBox.getChildren().addAll(
-                        starsRow("Stile", rs.mediaStile),
-                        starsRow("Contenuto", rs.mediaContenuto),
-                        starsRow("Gradevolezza", rs.mediaGradevolezza),
-                        starsRow("Originalita", rs.mediaOriginalita),
-                        starsRow("Edizione", rs.mediaEdizione)
+                        starsRow("Stile", dd.rs.mediaStile),
+                        starsRow("Contenuto", dd.rs.mediaContenuto),
+                        starsRow("Gradevolezza", dd.rs.mediaGradevolezza),
+                        starsRow("Originalita", dd.rs.mediaOriginalita),
+                        starsRow("Edizione", dd.rs.mediaEdizione)
                 );
             }
-            List<Review> reviews = reviewService.listByBook(b.getId());
-            List<Review> withComment = reviews.stream()
+
+            
+            // --- commenti (con “mostra 5 / espandi”) ---
+            List<Review> withComment = (dd.reviews == null ? List.<Review>of() : dd.reviews).stream()
                     .filter(r -> r.getCommento() != null && !r.getCommento().isBlank())
                     .toList();
 
-            dCommentBox.getChildren().clear();
+            // reset stato per ogni libro selezionato
+            commentsExpanded = false;
+            lastComments = withComment;
 
-            if (withComment.isEmpty()) {
-                dCommentBox.getChildren().add(labelMuted("Nessun commento disponibile."));
-            } else {
-                boolean first = true;
-                for (Review r : withComment) {
-                    if (!first) dCommentBox.getChildren().add(new Separator());
-                    first = false;
+            renderComments();
 
-                    Label c = new Label(r.getCommento().trim());
-                    c.setWrapText(true);
-                    dCommentBox.getChildren().add(c);
-                }
-            }
 
-        } catch (Exception e) {
-            dAvg.setText("Errore aggregazione: " + e.getMessage());
-            dStarsBox.getChildren().setAll(labelMuted("Errore aggregazione."));
-        }
-
-        // === Aggregazioni consigli (remote) ===
-        try {
-            AggregationService.SuggestionsStats ss = aggregationService.getSuggestionsStats(b.getId());
+            // --- suggerimenti ---
             dSuggestions.getChildren().clear();
+            AggregationService.SuggestionsStats ss = dd.ss;
 
             if (ss == null || ss.suggeritiCount == null || ss.suggeritiCount.isEmpty()) {
                 dSuggestions.getChildren().add(labelMuted("Nessun consiglio disponibile."));
@@ -971,42 +1067,109 @@ public class BookRecommenderFX extends Application {
                 int shown = 0;
 
                 for (Map.Entry<Integer, Integer> entry : ss.suggeritiCount.entrySet()) {
-                    Integer id = entry.getKey();
+                    Integer idObj = entry.getKey();
                     int count = entry.getValue();
+                    if (idObj == null) continue;
 
-                    Book sb = bookCache.get(id);
-                    String label = (sb == null || sb.getTitolo() == null || sb.getTitolo().isBlank())
-                            ? ("Libro ID " + id + "  (" + count + ")")
-                            : (sb.getTitolo() + "  (" + count + ")");
+                    // ricavo UNA VOLTA il Book (prima da suggestedBooks, poi dalla cache)
+                    Book resolved = dd.suggestedBooks.get(idObj);
+                    if (resolved == null) resolved = bookCache.get(idObj);
+
+                    // variabili final per la lambda
+                    final int finalId = idObj;
+                    final Book finalBook = resolved;
+
+                    String label = (finalBook == null || finalBook.getTitolo() == null || finalBook.getTitolo().isBlank())
+                            ? ("Libro ID " + finalId + "  (" + count + ")")
+                            : (finalBook.getTitolo() + "  (" + count + ")");
 
                     Button link = new Button(label);
                     link.getStyleClass().add("ghost");
                     link.setMaxWidth(Double.MAX_VALUE);
 
-                    link.setOnAction(e -> {
-                        // se presente in tabella, seleziona
-                        Optional<Book> match = data.stream().filter(x -> x.getId() == id).findFirst();
+                    link.setOnAction(ev -> {
+                        Optional<Book> match = data.stream()
+                                .filter(x -> x.getId() == finalId)
+                                .findFirst();
+
                         if (match.isPresent()) {
                             tbl.getSelectionModel().select(match.get());
                             return;
                         }
-                        // se in cache, mostra dettaglio
-                        if (sb != null) {
-                            showDetail(owner, sb);
+
+                        if (finalBook != null) {
+                            showDetail(owner, finalBook);
                             return;
                         }
-                        FxUtil.toast(owner.getScene(), "Libro non in cache. Esegui una ricerca per visualizzarlo (ID " + id + ").");
+
+                        FxUtil.toast(owner.getScene(),
+                                "Libro non in cache. Esegui una ricerca per visualizzarlo (ID " + finalId + ").");
                     });
 
                     dSuggestions.getChildren().add(link);
+
                     shown++;
                     if (shown >= 5) break;
                 }
             }
-        } catch (Exception e) {
-            dSuggestions.getChildren().setAll(labelMuted("Errore nel caricamento consigli: " + e.getMessage()));
+        });
+
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            dAvg.setText("Errore caricamento: " + (ex == null ? "sconosciuto" : ex.getMessage()));
+            dStarsBox.getChildren().setAll(labelMuted("Errore caricamento dettaglio."));
+            dCommentBox.getChildren().setAll(labelMuted("Errore caricamento commenti."));
+            dSuggestions.getChildren().setAll(labelMuted("Errore caricamento consigli."));
+        });
+
+        ioPool.submit(task);
+    }
+
+    private void renderComments() {
+        dCommentBox.getChildren().clear();
+
+        final int LIMIT = 5;
+
+        if (lastComments == null || lastComments.isEmpty()) {
+            dCommentBox.getChildren().add(labelMuted("Nessun commento disponibile."));
+            btnToggleComments.setVisible(false);
+            btnToggleComments.setManaged(false);
+            return;
+        }
+
+        List<Review> toShow;
+        if (commentsExpanded || lastComments.size() <= LIMIT) {
+            toShow = lastComments;
+        } else {
+            toShow = lastComments.subList(0, LIMIT);
+        }
+
+        boolean first = true;
+        for (Review r : toShow) {
+            if (!first) dCommentBox.getChildren().add(new Separator());
+            first = false;
+
+            Label c = new Label(r.getCommento().trim());
+            c.setWrapText(true);
+            dCommentBox.getChildren().add(c);
+        }
+
+        if (lastComments.size() > LIMIT) {
+            btnToggleComments.setVisible(true);
+            btnToggleComments.setManaged(true);
+
+            if (commentsExpanded) {
+                btnToggleComments.setText("Mostra meno");
+            } else {
+                btnToggleComments.setText("Mostra tutti (" + lastComments.size() + ")");
+            }
+        } else {
+            btnToggleComments.setVisible(false);
+            btnToggleComments.setManaged(false);
         }
     }
+
+
 
 
     /**
@@ -1031,6 +1194,14 @@ public class BookRecommenderFX extends Application {
         dAvg.setText("-");
         if (dStarsBox != null) dStarsBox.getChildren().setAll(labelMuted("Nessuna valutazione disponibile."));
         if (dSuggestions != null) dSuggestions.getChildren().setAll(labelMuted("Seleziona un libro per vedere i dettagli."));
+        lastComments = List.of();
+        commentsExpanded = false;
+        if (btnToggleComments != null) {
+            btnToggleComments.setVisible(false);
+            btnToggleComments.setManaged(false);
+        }
+        if (dCommentBox != null) dCommentBox.getChildren().clear();
+
     }
 
     // ---------------- Librerie ----------------
@@ -2100,4 +2271,11 @@ public class BookRecommenderFX extends Application {
     public static void main(String[] args) {
         launch(args);
     }
+
+    @Override
+    public void stop() {
+        try { ioPool.shutdownNow(); } catch (Exception ignored) {}
+        try { if (proxy != null) proxy.close(); } catch (Exception ignored) {}
+    }
+
 }

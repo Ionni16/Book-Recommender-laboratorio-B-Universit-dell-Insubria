@@ -38,6 +38,11 @@ public class ReviewService {
     /** Proxy di rete usato per comunicare con il server. */
     private final BRProxy proxy;
 
+    public ReviewService(Path ignoredValutazioni, Path ignoredLibrerie, BRProxy proxy) {
+        this.proxy = proxy;
+    }
+
+
     /**
      * Crea un nuovo servizio per la gestione delle recensioni.
      *
@@ -45,8 +50,9 @@ public class ReviewService {
      * @param ignoredLibrerie percorso delle librerie (attualmente ignorato)
      */
     public ReviewService(Path ignoredValutazioni, Path ignoredLibrerie) {
-        this.proxy = new BRProxy("127.0.0.1", 5050);
+        this(ignoredValutazioni, ignoredLibrerie, new BRProxy("127.0.0.1", 5050));
     }
+
 
     /**
      * Ritorna tutte le recensioni associate a un utente.

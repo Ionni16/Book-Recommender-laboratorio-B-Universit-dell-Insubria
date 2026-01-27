@@ -2,66 +2,51 @@ package bookrecommender.net;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 
 /**
  * Proxy client per il protocollo di rete di Book Recommender.
- * <p>
- * Questa classe incapsula una singola chiamata sincrona verso il server:
- * apre una {@link Socket}, invia un {@link Request} tramite {@link ObjectOutputStream},
- * e legge una {@link Response} tramite {@link ObjectInputStream}.
- * </p>
  *
- * <h2>Note</h2>
- * <ul>
- *   <li>Il metodo {@link #call(Request)} crea una nuova connessione per ogni invocazione.</li>
- *   <li>In caso di errore (I/O, de serializzazione, server non raggiungibile) ritorna una
- *       {@link Response} di fallimento tramite <code>Response.fail(...)</code>.</li>
- * </ul>
- *
- * @author Richard Zefi
- * @version 1.0
- * @see Request
- * @see Response
- * @see Socket
+ * VERSIONE OTTIMIZZATA:
+ * - connessione persistente (niente socket nuova ad ogni call)
+ * - timeout di connect/read
+ * - riconnessione automatica in caso di errore
  */
 @SuppressWarnings("ClassCanBeRecord")
 public class BRProxy {
 
-    /** Host del server a cui connettersi. */
     private final String host;
-
-    /** Porta TCP del server a cui connettersi. */
     private final int port;
 
-    /**
-     * Crea un nuovo proxy configurato per un server specifico.
-     *
-     * @param host host o indirizzo del server (es. <code>"localhost"</code>)
-     * @param port porta TCP del server
-     */
+    // timeout “ragionevoli” (modificabili)
+    private final int connectTimeoutMs = 1500;
+    private final int readTimeoutMs = 2500;
+
+    private Socket socket;
+    private ObjectOutputStream out;
+    private ObjectInputStream in;
+
     public BRProxy(String host, int port) {
         this.host = host;
         this.port = port;
     }
 
-    /**
-     * Invia una richiesta al server e ritorna la risposta.
-     * <p>
-     * La richiesta viene serializzata con <code>ObjectOutputStream</code> e la risposta viene
-     * deserializzata con <code>ObjectInputStream</code>.
-     * </p>
-     *
-     * @param req richiesta da inviare (non dovrebbe essere <code>null</code>)
-     * @return la {@link Response} del server; se la risposta non è valida o si verifica un errore,
-     *         ritorna una risposta di fallimento tramite <code>Response.fail(...)</code>
-     * @see ObjectOutputStream#writeObject(Object)
-     * @see ObjectInputStream#readObject()
-     */
-    public Response call(Request req) {
-        try (Socket s = new Socket(host, port);
-             ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
-             ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
+    private void ensureConnected() throws Exception {
+        if (socket != null && socket.isConnected() && !socket.isClosed()) return;
+
+        socket = new Socket();
+        socket.connect(new InetSocketAddress(host, port), connectTimeoutMs);
+        socket.setSoTimeout(readTimeoutMs);
+
+        out = new ObjectOutputStream(socket.getOutputStream());
+        out.flush();
+        in = new ObjectInputStream(socket.getInputStream());
+    }
+
+    public synchronized Response call(Request req) {
+        try {
+            ensureConnected();
 
             out.writeObject(req);
             out.flush();
@@ -73,7 +58,18 @@ public class BRProxy {
             return res;
 
         } catch (Exception e) {
+            // forza riconnessione al prossimo giro
+            close();
             return Response.fail("Connessione fallita: " + e.getMessage());
         }
+    }
+
+    public synchronized void close() {
+        try { if (in != null) in.close(); } catch (Exception ignored) {}
+        try { if (out != null) out.close(); } catch (Exception ignored) {}
+        try { if (socket != null) socket.close(); } catch (Exception ignored) {}
+        in = null;
+        out = null;
+        socket = null;
     }
 }

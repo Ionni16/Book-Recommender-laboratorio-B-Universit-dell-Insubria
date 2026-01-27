@@ -39,6 +39,11 @@ public class AggregationService {
     /** Proxy di rete usato per interrogare il server. */
     private final BRProxy proxy;
 
+    public AggregationService(BRProxy proxy) {
+        this.proxy = proxy;
+    }
+
+
     /**
      * Crea un nuovo servizio di aggregazione.
      * <p>
@@ -50,7 +55,7 @@ public class AggregationService {
      * @param ignoredConsigli percorso (ignorato) dei suggerimenti/consigli
      */
     public AggregationService(Path ignoredValutazioni, Path ignoredConsigli) {
-        this.proxy = new BRProxy("127.0.0.1", 5050);
+        this(new BRProxy("127.0.0.1", 5050));
     }
 
     /**
@@ -127,6 +132,31 @@ public class AggregationService {
         s.mediaVotoFinale = sumVF / (double) s.count;
         return s;
     }
+
+    public ReviewStats computeReviewStats(List<Review> reviews) {
+        ReviewStats s = new ReviewStats();
+        s.count = (reviews == null) ? 0 : reviews.size();
+        if (s.count == 0) return s;
+
+        int sumS = 0, sumC = 0, sumG = 0, sumO = 0, sumE = 0, sumVF = 0;
+        for (Review r : reviews) {
+            s.distribuzioneVoti.merge(r.getVotoFinale(), 1, Integer::sum);
+            sumS += r.getStile();
+            sumC += r.getContenuto();
+            sumG += r.getGradevolezza();
+            sumO += r.getOriginalita();
+            sumE += r.getEdizione();
+            sumVF += r.getVotoFinale();
+        }
+        s.mediaStile = sumS / (double) s.count;
+        s.mediaContenuto = sumC / (double) s.count;
+        s.mediaGradevolezza = sumG / (double) s.count;
+        s.mediaOriginalita = sumO / (double) s.count;
+        s.mediaEdizione = sumE / (double) s.count;
+        s.mediaVotoFinale = sumVF / (double) s.count;
+        return s;
+    }
+
 
     /**
      * Calcola statistiche sui suggerimenti associati a un libro.

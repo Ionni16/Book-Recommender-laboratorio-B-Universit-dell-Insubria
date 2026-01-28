@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"bookrecommender"},{"l":"bookrecommender.db"},{"l":"bookrecommender.dbcreator"},{"l":"bookrecommender.model"},{"l":"bookrecommender.net"},{"l":"bookrecommender.repo"},{"l":"bookrecommender.server"},{"l":"bookrecommender.service"},{"l":"bookrecommender.ui"}];updateSearchResults();

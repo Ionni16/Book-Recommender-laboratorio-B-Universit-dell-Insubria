@@ -24,13 +24,12 @@ import java.io.Serializable;
  * (liste, singoli oggetti, valori primitivi boxed, ecc.).
  * </p>
  *
- * <p>
  * <b>Convenzione:</b>
- * <ul>
- *     <li>se {@code ok == true} → {@code error == null}</li>
- *     <li>se {@code ok == false} → {@code data == null}</li>
- * </ul>
- * </p>
+    <ul>
+        <li>se {@code ok == true} → {@code error == null}</li>
+        <li>se {@code ok == false} → {@code data == null}</li>
+    </ul>
+
  *
  * @author Richard Zefi
  * @version 1.0

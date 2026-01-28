@@ -2176,7 +2176,6 @@ public class BookRecommenderFX extends Application {
 
     /**
      * Installa comportamenti per "commit" del valore dello {@link Spinner} quando:
-     * </p>
      * <ul>
      *   <li>l'editor perde focus</li>
      *   <li>Si preme invio nell'editor</li>

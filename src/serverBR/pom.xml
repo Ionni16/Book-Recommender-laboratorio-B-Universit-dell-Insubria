@@ -1,6 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -25,11 +26,12 @@
       <artifactId>postgresql</artifactId>
       <version>42.7.4</version>
     </dependency>
-
   </dependencies>
 
   <build>
     <plugins>
+
+      <!-- comodo per eseguire: mvn -pl src/serverBR exec:java -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
@@ -38,6 +40,37 @@
           <mainClass>bookrecommender.server.MainServer</mainClass>
         </configuration>
       </plugin>
+
+      <!-- FAT JAR eseguibile: java -jar ServerBR.jar -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <id>shade-server</id>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <finalName>ServerBR</finalName>
+
+              <!-- evita che venga creato anche il jar "original" -->
+              <shadedArtifactAttached>false</shadedArtifactAttached>
+
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>bookrecommender.server.MainServer</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
     </plugins>
   </build>
+
 </project>

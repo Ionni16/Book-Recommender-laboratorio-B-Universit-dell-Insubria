@@ -6,24 +6,23 @@ import java.sql.SQLException;
 
 /**
  * Classe di utilità per la gestione della connessione al database.
- * <p>
- * Incapsula i parametri di connessione (URL, utente, password) e fornisce
- * un metodo per ottenere una nuova {@link Connection} JDBC verso il database
- * PostgreSQL.
- * </p>
  *
- * <p>
- * La classe NON gestisce:
+ * <p>Incapsula i parametri di connessione (URL, utente, password) e fornisce
+ * un metodo per ottenere una nuova {@link Connection} JDBC verso il database
+ * PostgreSQL.</p>
+ *
+ * <p>La classe NON gestisce:</p>
  * <ul>
  *   <li>Connection pooling</li>
  *   <li>Chiusura automatica delle connessioni</li>
  *   <li>Retry o logging</li>
  * </ul>
- * Queste responsabilità sono demandate ai livelli superiori dell’applicazione.
- * </p>
+ *
+ * <p>Queste responsabilità sono demandate ai livelli superiori dell’applicazione.</p>
  *
  * @author Ionuț Puiu
  */
+
 @SuppressWarnings("ClassCanBeRecord")
 public class Db {
 

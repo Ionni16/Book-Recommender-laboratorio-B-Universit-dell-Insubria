@@ -64,7 +64,7 @@ CREATE DATABASE bookrecommender;
 
 ---
 
-### 3. Creazione schema e popolamento DB (DBCreator)
+### 3. Creazione schema e popolamento DB (DBCreator) (per sviluppo)
 
 ⚠️ **TUTTI i comandi vanno eseguiti dalla directory `DBCreator`**
 
@@ -72,7 +72,7 @@ CREATE DATABASE bookrecommender;
 cd DBCreator
 ```
 
-#### Creazione database e schema
+#### Creazione database e schema 
 
 ```bash
 mvn -pl DBCreator clean compile
@@ -92,7 +92,7 @@ Questo comando elimina e ricrea completamente il database.
 
 ---
 
-## 🧱 Build progetto
+## 🧱 Build progetto (per sviluppo)
 
 Dalla root del progetto:
 
@@ -105,15 +105,23 @@ Gli artefatti verranno generati in:
 ```
 /target
 ```
+---
+## ▶️ Avvio del DB (Utente finale)
+
+Il DB deve essere inizializzato **dalla cartella bin/**, dopo aver effettuato il cambio con  `cd bin`:.
+```bash
+java -jar DBCreator.jar
+```
+NB. questo comando va eseguito una singola volta.
 
 ---
 
-## ▶️ Avvio server
+## ▶️ Avvio server (Utente finale)
 
-⚠️ Il server deve essere avviato **dalla root del progetto**.
+Sempre dalla directory `bin`.
 
 ```bash
-mvn -pl src/serverBR exec:java
+java -jar ServerBR.jar
 ```
 
 Server disponibile su:
@@ -124,12 +132,22 @@ Server disponibile su:
 
 ---
 
-## ▶️ Avvio client JavaFX
+## ▶️ Avvio client JavaFX (Utente finale)
+
+Sempre dalla cartella `bin`, ci sono rispettivamente due launch script per l'avvio di JavaFx in base all'OS in utilizzo.
+Per windows:
 
 ```bash
-mvn -pl src/clientBR javafx:run   
+run-client.bat
 ```
-
+Per Linux/Mac:
+```bash
+./run-client.sh
+```
+in caso di problemi tentare con il comando soprastante, procedere con quello sotto indicato per poi ripetere il precedente: 
+```bash
+chmod +x run-client.sh
+```
 ---
 
 ## ▶️ Avvio da IDE
@@ -157,6 +175,8 @@ Classi principali:
 * Il caricamento iniziale può richiedere alcuni secondi per dataset molto grandi
 * Gli ID visualizzati sono **chiavi reali del database**
 * Il server deve essere avviato prima del client
+* Tutti i comandi Maven sono destinati **esclusivamente allo sviluppo**.  
+* L’utente finale deve utilizzare solo i file presenti nella cartella `bin/`.
 
 ---
 

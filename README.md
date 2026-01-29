@@ -107,9 +107,9 @@ Gli artefatti verranno generati in:
 ```
 Se dopo la build i file `ClientBR.jar`, `ServerBR.jar` e `DBCreator.jar` non sono dentro la relativa cartella `bin`, procedere nel copiarli nei seguenti percorsi:
 
-*`src/clientBR/target/ClientBR.jar`
-*`src/serverBR/target/ServerBR.jar`
-*`src/dbcreator/target/DBCreator.jar`
+* `src/clientBR/target/ClientBR.jar`.
+* `src/serverBR/target/ServerBR.jar`.
+* `src/dbcreator/target/DBCreator.jar`.
 
 ---
 ## ▶️ Avvio del DB (Utente finale)

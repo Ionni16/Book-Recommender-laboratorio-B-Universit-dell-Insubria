@@ -19,100 +19,43 @@
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- JavaFX -->
     <javafx.version>21.0.4</javafx.version>
+
+    <!-- directory consegna -->
+    <deliver.dir>${maven.multiModuleProjectDirectory}/bin</deliver.dir>
   </properties>
 
   <build>
-
-    <!-- 1) Definizione plugin (non lo esegue nei moduli) -->
-    <pluginManagement>
-      <plugins>
-
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-antrun-plugin</artifactId>
-          <version>3.1.0</version>
-        </plugin>
-
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-dependency-plugin</artifactId>
-          <version>3.6.1</version>
-        </plugin>
-
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-javadoc-plugin</artifactId>
-          <version>3.6.0</version>
-        </plugin>
-
-      </plugins>
-    </pluginManagement>
-
-    <!-- 2) Esecuzioni vere e proprie (solo QUI nel parent) -->
     <plugins>
 
-      <!-- JAVADOC aggregata (tutto il progetto) -->
+      <!-- (Opzionale) Javadoc aggregata -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.6.0</version>
         <configuration>
           <encoding>UTF-8</encoding>
           <docencoding>UTF-8</docencoding>
           <charset>UTF-8</charset>
           <show>private</show>
-          <!-- <failOnError>false</failOnError> -->
+          <!-- se vuoi evitare blocchi per html nei commenti -->
+          <failOnError>false</failOnError>
         </configuration>
       </plugin>
 
-      <!-- Copia in /bin i jar finali (solo nel parent, non nei moduli) -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-antrun-plugin</artifactId>
-
-        <!-- fondamentale: NON farlo ereditare dai moduli -->
-        <inherited>false</inherited>
-
-        <executions>
-          <execution>
-            <id>copy-project-jars-to-bin</id>
-            <phase>package</phase>
-            <goals>
-              <goal>run</goal>
-            </goals>
-            <configuration>
-              <target>
-                <mkdir dir="${project.basedir}/bin"/>
-
-                <!-- Server fatjar -->
-                <copy file="${project.basedir}/src/serverBR/target/ServerBR.jar"
-                      tofile="${project.basedir}/bin/ServerBR.jar"
-                      overwrite="true"/>
-
-                <!-- Client jar (dal tuo screenshot) -->
-                <copy file="${project.basedir}/src/clientBR/target/ClientBR.jar"
-                      tofile="${project.basedir}/bin/ClientBR.jar"
-                      overwrite="true"/>
-              </target>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <!-- JavaFX per tutti gli OS in /bin/lib/<os> (solo nel parent) -->
+      <!-- Copia SOLO le librerie JavaFX per tutti gli OS (questo qui va bene nel padre) -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
-
-        <!-- anche qui meglio evitare ereditarietà -->
-        <inherited>false</inherited>
-
+        <version>3.6.1</version>
         <executions>
 
-          <!-- JavaFX per WINDOWS -->
+          <!-- Windows -->
           <execution>
             <id>copy-javafx-win</id>
-            <phase>package</phase>
+            <phase>prepare-package</phase>
             <goals><goal>copy</goal></goals>
             <configuration>
               <artifactItems>
@@ -121,37 +64,37 @@
                   <artifactId>javafx-base</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>win</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/win</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Windows/lib</outputDirectory>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.openjfx</groupId>
                   <artifactId>javafx-graphics</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>win</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/win</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Windows/lib</outputDirectory>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.openjfx</groupId>
                   <artifactId>javafx-controls</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>win</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/win</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Windows/lib</outputDirectory>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.openjfx</groupId>
                   <artifactId>javafx-fxml</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>win</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/win</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Windows/lib</outputDirectory>
                 </artifactItem>
               </artifactItems>
             </configuration>
           </execution>
 
-          <!-- JavaFX per LINUX -->
+          <!-- Linux -->
           <execution>
             <id>copy-javafx-linux</id>
-            <phase>package</phase>
+            <phase>prepare-package</phase>
             <goals><goal>copy</goal></goals>
             <configuration>
               <artifactItems>
@@ -160,37 +103,37 @@
                   <artifactId>javafx-base</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>linux</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/linux</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Linux/lib</outputDirectory>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.openjfx</groupId>
                   <artifactId>javafx-graphics</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>linux</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/linux</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Linux/lib</outputDirectory>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.openjfx</groupId>
                   <artifactId>javafx-controls</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>linux</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/linux</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Linux/lib</outputDirectory>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.openjfx</groupId>
                   <artifactId>javafx-fxml</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>linux</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/linux</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Linux/lib</outputDirectory>
                 </artifactItem>
               </artifactItems>
             </configuration>
           </execution>
 
-          <!-- JavaFX per MAC -->
+          <!-- Mac Intel -->
           <execution>
             <id>copy-javafx-mac</id>
-            <phase>package</phase>
+            <phase>prepare-package</phase>
             <goals><goal>copy</goal></goals>
             <configuration>
               <artifactItems>
@@ -199,28 +142,67 @@
                   <artifactId>javafx-base</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>mac</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/mac</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Mac-Intel/lib</outputDirectory>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.openjfx</groupId>
                   <artifactId>javafx-graphics</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>mac</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/mac</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Mac-Intel/lib</outputDirectory>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.openjfx</groupId>
                   <artifactId>javafx-controls</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>mac</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/mac</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Mac-Intel/lib</outputDirectory>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.openjfx</groupId>
                   <artifactId>javafx-fxml</artifactId>
                   <version>${javafx.version}</version>
                   <classifier>mac</classifier>
-                  <outputDirectory>${project.basedir}/bin/lib/mac</outputDirectory>
+                  <outputDirectory>${deliver.dir}/Mac-Intel/lib</outputDirectory>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+
+          <!-- Mac Apple Silicon (aarch64) -->
+          <execution>
+            <id>copy-javafx-mac-aarch64</id>
+            <phase>prepare-package</phase>
+            <goals><goal>copy</goal></goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>org.openjfx</groupId>
+                  <artifactId>javafx-base</artifactId>
+                  <version>${javafx.version}</version>
+                  <classifier>mac-aarch64</classifier>
+                  <outputDirectory>${deliver.dir}/Mac-aarch64/lib</outputDirectory>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.openjfx</groupId>
+                  <artifactId>javafx-graphics</artifactId>
+                  <version>${javafx.version}</version>
+                  <classifier>mac-aarch64</classifier>
+                  <outputDirectory>${deliver.dir}/Mac-aarch64/lib</outputDirectory>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.openjfx</groupId>
+                  <artifactId>javafx-controls</artifactId>
+                  <version>${javafx.version}</version>
+                  <classifier>mac-aarch64</classifier>
+                  <outputDirectory>${deliver.dir}/Mac-aarch64/lib</outputDirectory>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.openjfx</groupId>
+                  <artifactId>javafx-fxml</artifactId>
+                  <version>${javafx.version}</version>
+                  <classifier>mac-aarch64</classifier>
+                  <outputDirectory>${deliver.dir}/Mac-aarch64/lib</outputDirectory>
                 </artifactItem>
               </artifactItems>
             </configuration>
@@ -231,6 +213,5 @@
 
     </plugins>
   </build>
-
 
 </project>

@@ -1,0 +1,11 @@
+bookrecommender\db\Db.class
+bookrecommender\repo\ConsigliRepository.class
+bookrecommender\server\MainServer$1.class
+bookrecommender\server\MainServer.class
+module-info.class
+bookrecommender\service\SearchService.class
+bookrecommender\repo\UtentiRepository.class
+bookrecommender\repo\LibrerieRepository.class
+bookrecommender\repo\LibriRepository.class
+bookrecommender\repo\ValutazioniRepository.class
+bookrecommender\service\AuthService.class

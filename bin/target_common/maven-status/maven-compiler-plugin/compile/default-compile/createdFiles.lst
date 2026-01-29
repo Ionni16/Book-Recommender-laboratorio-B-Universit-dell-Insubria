@@ -1,0 +1,10 @@
+bookrecommender\model\User.class
+bookrecommender\net\Request.class
+bookrecommender\model\Book.class
+bookrecommender\model\Suggestion.class
+bookrecommender\net\RequestType.class
+module-info.class
+bookrecommender\net\BRProxy.class
+bookrecommender\model\Library.class
+bookrecommender\net\Response.class
+bookrecommender\model\Review.class

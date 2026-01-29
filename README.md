@@ -64,7 +64,7 @@ CREATE DATABASE bookrecommender;
 
 ---
 
-### 3. Creazione schema e popolamento DB (DBCreator)
+### 3. Creazione schema e popolamento DB (DBCreator) (per sviluppo)
 
 ⚠️ **TUTTI i comandi vanno eseguiti dalla directory `DBCreator`**
 
@@ -72,7 +72,7 @@ CREATE DATABASE bookrecommender;
 cd DBCreator
 ```
 
-#### Creazione database e schema
+#### Creazione database e schema 
 
 ```bash
 mvn -pl DBCreator clean compile
@@ -92,7 +92,7 @@ Questo comando elimina e ricrea completamente il database.
 
 ---
 
-## 🧱 Build progetto
+## 🧱 Build progetto (per sviluppo)
 
 Dalla root del progetto:
 
@@ -107,13 +107,22 @@ Gli artefatti verranno generati in:
 ```
 
 ---
+## ▶️ Avvio del DB (Utente finale)
 
-## ▶️ Avvio server
+Il DB deve essere inizializzato **dalla cartella bin/**, dopo aver effettuato il cambio con  `cd bin`:.
+```bash
+java -jar DBCreator.jar
+```
+NB. questo comando va eseguito una singola volta.
 
-⚠️ Il server deve essere avviato **dalla root del progetto**.
+---
+
+## ▶️ Avvio server (Utente finale)
+
+Sempre dalla directory `bin`.
 
 ```bash
-mvn -pl src/serverBR exec:java
+java -jar ServerBR.jar
 ```
 
 Server disponibile su:
@@ -124,10 +133,12 @@ Server disponibile su:
 
 ---
 
-## ▶️ Avvio client JavaFX
+## ▶️ Avvio client JavaFX (Utente finale)
+
+Sempre dalla cartella `bin`:
 
 ```bash
-mvn -pl src/clientBR javafx:run   
+java -jar ClientBR.java
 ```
 
 ---
@@ -157,6 +168,8 @@ Classi principali:
 * Il caricamento iniziale può richiedere alcuni secondi per dataset molto grandi
 * Gli ID visualizzati sono **chiavi reali del database**
 * Il server deve essere avviato prima del client
+* Tutti i comandi Maven sono destinati **esclusivamente allo sviluppo**.  
+* L’utente finale deve utilizzare solo i file presenti nella cartella `bin/`.
 
 ---
 

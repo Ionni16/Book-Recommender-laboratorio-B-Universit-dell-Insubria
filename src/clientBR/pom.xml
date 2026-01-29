@@ -38,8 +38,16 @@
     </dependency>
   </dependencies>
 
+
   <build>
     <plugins>
+
+      <plugin>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>1.7.1</version>
+        <extensions>true</extensions>
+      </plugin>
 
       <!-- crea un jar "uber" che include anche common e imposta Main-Class -->
       <plugin>

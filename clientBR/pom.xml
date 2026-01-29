@@ -1,0 +1,170 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+      <groupId>bookrecommender</groupId>
+      <artifactId>bookrecommender-parent</artifactId>
+      <version>1.0.0</version>
+  </parent>
+
+  <artifactId>clientBR</artifactId>
+    <name>ClientBR</name>
+  <packaging>jar</packaging>
+
+  <properties>
+    <javafx.version>21.0.4</javafx.version>
+      <main.class>bookrecommender.Main</main.class>
+      <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+      <maven.compiler.source>17</maven.compiler.source>
+      <maven.compiler.target>17</maven.compiler.target>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>bookrecommender</groupId>
+      <artifactId>common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
+
+    <profiles>
+        <!-- Windows -->
+        <profile>
+            <id>windows-jfx</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-base</artifactId>
+                    <version>${javafx.version}</version><classifier>win</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-graphics</artifactId>
+                    <version>${javafx.version}</version><classifier>win</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-controls</artifactId>
+                    <version>${javafx.version}</version><classifier>win</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-fxml</artifactId>
+                    <version>${javafx.version}</version><classifier>win</classifier>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- Linux -->
+        <profile>
+            <id>linux-jfx</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-base</artifactId>
+                    <version>${javafx.version}</version><classifier>linux</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-graphics</artifactId>
+                    <version>${javafx.version}</version><classifier>linux</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-controls</artifactId>
+                    <version>${javafx.version}</version><classifier>linux</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-fxml</artifactId>
+                    <version>${javafx.version}</version><classifier>linux</classifier>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- macOS Intel -->
+        <profile>
+            <id>macos-intel-jfx</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-base</artifactId>
+                    <version>${javafx.version}</version><classifier>mac</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-graphics</artifactId>
+                    <version>${javafx.version}</version><classifier>mac</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-controls</artifactId>
+                    <version>${javafx.version}</version><classifier>mac</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-fxml</artifactId>
+                    <version>${javafx.version}</version><classifier>mac</classifier>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- macOS Apple Silicon -->
+        <profile>
+            <id>macos-arm-jfx</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-base</artifactId>
+                    <version>${javafx.version}</version><classifier>mac-aarch64</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-graphics</artifactId>
+                    <version>${javafx.version}</version><classifier>mac-aarch64</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-controls</artifactId>
+                    <version>${javafx.version}</version><classifier>mac-aarch64</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId><artifactId>javafx-fxml</artifactId>
+                    <version>${javafx.version}</version><classifier>mac-aarch64</classifier>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+
+  <build>
+      <directory>${maven.multiModuleProjectDirectory}/bin/target_ClientBR</directory>
+
+      <resources>
+          <resource>
+              <directory>src/main/resources</directory>
+              <filtering>false</filtering>
+          </resource>
+      </resources>
+
+    <plugins>
+
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>3.7.0</version>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <mainClass>${main.class}</mainClass>
+                    </manifest>
+                </archive>
+                <descriptorRefs>
+                    <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
+                <finalName>ClientBR</finalName>
+                <appendAssemblyId>false</appendAssemblyId>
+                <outputDirectory>${maven.multiModuleProjectDirectory}/bin</outputDirectory>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>make-assembly</id>
+                    <phase>package</phase>
+                    <goals>
+                        <goal>single</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+  </build>
+
+
+</project>
